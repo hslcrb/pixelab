@@ -15,6 +15,7 @@ class Toolbar(tk.Frame):
         
         # Tool definitions (name, icon, shortcut)
         self.tools = [
+            ("Select", "➦", "V"),
             ("Pencil", "✏️", "P"),
             ("Brush", "🖌️", "B"),
             ("Eraser", "🧹", "E"),

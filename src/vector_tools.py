@@ -1,0 +1,318 @@
+"""
+Vector Tools - Tools that create and manipulate vector objects
+"""
+from abc import ABC, abstractmethod
+from .vector_objects import *
+from .object_manager import ObjectManager
+
+
+class VectorTool(ABC):
+    """Base class for vector tools"""
+    
+    def __init__(self, color=(0, 0, 0, 255)):
+        self.color = color
+        self.preview_object = None
+    
+    @abstractmethod
+    def on_press(self, x, y, object_manager: ObjectManager):
+        """Called when mouse button is pressed"""
+        pass
+    
+    @abstractmethod
+    def on_drag(self, x, y, object_manager: ObjectManager):
+        """Called when mouse is dragged"""
+        pass
+    
+    @abstractmethod
+    def on_release(self, x, y, object_manager: ObjectManager):
+        """Called when mouse button is released"""
+        pass
+    
+    def set_color(self, color):
+        """Set tool color"""
+        self.color = color
+    
+    def get_cursor(self):
+        """Get cursor style for this tool"""
+        return "crosshair"
+    
+    def get_preview_object(self):
+        """Get preview object for rendering"""
+        return self.preview_object
+
+
+class VectorPencilTool(VectorTool):
+    """Creates VectorPixel or VectorPath objects"""
+    
+    def __init__(self, color=(0, 0, 0, 255)):
+        super().__init__(color)
+        self.current_path = None
+    
+    def on_press(self, x, y, object_manager):
+        # Start new path
+        self.current_path = VectorPath([(x, y)], self.color)
+        self.preview_object = self.current_path
+    
+    def on_drag(self, x, y, object_manager):
+        if self.current_path:
+            # Add point to path
+            if (x, y) != self.current_path.points[-1]:
+                self.current_path.points.append((x, y))
+    
+    def on_release(self, x, y, object_manager):
+        if self.current_path:
+            if len(self.current_path.points) == 1:
+                # Single pixel
+                px, py = self.current_path.points[0]
+                object_manager.add_object(VectorPixel(px, py, self.color))
+            else:
+                # Add path
+                object_manager.add_object(self.current_path)
+            
+            self.current_path = None
+            self.preview_object = None
+
+
+class VectorBrushTool(VectorTool):
+    """Creates multiple VectorPixel objects or filled areas"""
+    
+    def __init__(self, color=(0, 0, 0, 255), size=3):
+        super().__init__(color)
+        self.size = size
+        self.drawn_pixels = set()
+    
+    def set_size(self, size):
+        self.size = max(1, min(10, size))
+    
+    def on_press(self, x, y, object_manager):
+        self.drawn_pixels.clear()
+        self._draw_brush(x, y, object_manager)
+    
+    def on_drag(self, x, y, object_manager):
+        self._draw_brush(x, y, object_manager)
+    
+    def on_release(self, x, y, object_manager):
+        self.drawn_pixels.clear()
+    
+    def _draw_brush(self, cx, cy, object_manager):
+        radius = self.size // 2
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                if dx*dx + dy*dy <= radius*radius:
+                    px, py = cx + dx, cy + dy
+                    if (px, py) not in self.drawn_pixels:
+                        object_manager.add_object(VectorPixel(px, py, self.color))
+                        self.drawn_pixels.add((px, py))
+
+
+class VectorEraserTool(VectorTool):
+    """Removes objects under cursor"""
+    
+    def __init__(self, size=3):
+        super().__init__((0, 0, 0, 0))
+        self.size = size
+    
+    def set_size(self, size):
+        self.size = max(1, min(10, size))
+    
+    def on_press(self, x, y, object_manager):
+        self._erase(x, y, object_manager)
+    
+    def on_drag(self, x, y, object_manager):
+        self._erase(x, y, object_manager)
+    
+    def on_release(self, x, y, object_manager):
+        pass
+    
+    def _erase(self, cx, cy, object_manager):
+        radius = self.size // 2
+        to_remove = []
+        
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                if dx*dx + dy*dy <= radius*radius:
+                    px, py = cx + dx, cy + dy
+                    obj = object_manager.get_object_at(px, py)
+                    if obj and obj not in to_remove:
+                        to_remove.append(obj)
+        
+        for obj in to_remove:
+            object_manager.remove_object(obj)
+
+
+class VectorLineTool(VectorTool):
+    """Creates VectorLine objects"""
+    
+    def __init__(self, color=(0, 0, 0, 255)):
+        super().__init__(color)
+        self.start_pos = None
+    
+    def on_press(self, x, y, object_manager):
+        self.start_pos = (x, y)
+        self.preview_object = VectorLine(x, y, x, y, self.color)
+    
+    def on_drag(self, x, y, object_manager):
+        if self.start_pos:
+            x0, y0 = self.start_pos
+            self.preview_object = VectorLine(x0, y0, x, y, self.color)
+    
+    def on_release(self, x, y, object_manager):
+        if self.start_pos:
+            x0, y0 = self.start_pos
+            if (x0, y0) != (x, y):
+                object_manager.add_object(VectorLine(x0, y0, x, y, self.color))
+            else:
+                # Single pixel
+                object_manager.add_object(VectorPixel(x, y, self.color))
+            
+            self.start_pos = None
+            self.preview_object = None
+
+
+class VectorRectangleTool(VectorTool):
+    """Creates VectorRectangle objects"""
+    
+    def __init__(self, color=(0, 0, 0, 255), filled=False):
+        super().__init__(color)
+        self.filled = filled
+        self.start_pos = None
+    
+    def on_press(self, x, y, object_manager):
+        self.start_pos = (x, y)
+        self.preview_object = VectorRectangle(x, y, x, y, self.color, self.filled)
+    
+    def on_drag(self, x, y, object_manager):
+        if self.start_pos:
+            x0, y0 = self.start_pos
+            self.preview_object = VectorRectangle(x0, y0, x, y, self.color, self.filled)
+    
+    def on_release(self, x, y, object_manager):
+        if self.start_pos:
+            x0, y0 = self.start_pos
+            if (x0, y0) != (x, y):
+                object_manager.add_object(VectorRectangle(x0, y0, x, y, self.color, self.filled))
+            else:
+                # Single pixel
+                object_manager.add_object(VectorPixel(x, y, self.color))
+            
+            self.start_pos = None
+            self.preview_object = None
+
+
+class VectorCircleTool(VectorTool):
+    """Creates VectorCircle objects"""
+    
+    def __init__(self, color=(0, 0, 0, 255), filled=False):
+        super().__init__(color)
+        self.filled = filled
+        self.start_pos = None
+    
+    def on_press(self, x, y, object_manager):
+        self.start_pos = (x, y)
+        self.preview_object = VectorCircle(x, y, 0, self.color, self.filled)
+    
+    def on_drag(self, x, y, object_manager):
+        if self.start_pos:
+            cx, cy = self.start_pos
+            radius = int(max(abs(x - cx), abs(y - cy)))
+            self.preview_object = VectorCircle(cx, cy, radius, self.color, self.filled)
+    
+    def on_release(self, x, y, object_manager):
+        if self.start_pos:
+            cx, cy = self.start_pos
+            radius = int(max(abs(x - cx), abs(y - cy)))
+            if radius > 0:
+                object_manager.add_object(VectorCircle(cx, cy, radius, self.color, self.filled))
+            else:
+                # Single pixel
+                object_manager.add_object(VectorPixel(cx, cy, self.color))
+            
+            self.start_pos = None
+            self.preview_object = None
+
+
+class VectorEyedropperTool(VectorTool):
+    """Picks color from rendered pixels"""
+    
+    def __init__(self, color_callback=None):
+        super().__init__()
+        self.color_callback = color_callback
+    
+    def on_press(self, x, y, object_manager):
+        # This needs access to rendered pixels, handled by app
+        pass
+    
+    def on_drag(self, x, y, object_manager):
+        pass
+    
+    def on_release(self, x, y, object_manager):
+        pass
+    
+    def pick_color(self, color):
+        if self.color_callback:
+            self.color_callback(color)
+    
+    def get_cursor(self):
+        return "target"
+
+
+class VectorSelectTool(VectorTool):
+    """Selects and moves vector objects"""
+    
+    def __init__(self):
+        super().__init__()
+        self.dragging = False
+        self.drag_start = None
+        self.selected_obj = None
+    
+    def on_press(self, x, y, object_manager):
+        # Try to select object at position
+        obj = object_manager.get_object_at(x, y)
+        
+        if obj:
+            if obj not in object_manager.selected_objects:
+                # Deselect others and select this
+                object_manager.deselect_all()
+                object_manager.select_object(obj)
+            
+            self.selected_obj = obj
+            self.dragging = True
+            self.drag_start = (x, y)
+        else:
+            # Deselect all
+            object_manager.deselect_all()
+            self.selected_obj = None
+    
+    def on_drag(self, x, y, object_manager):
+        if self.dragging and self.drag_start and self.selected_obj:
+            dx = x - self.drag_start[0]
+            dy = y - self.drag_start[1]
+            
+            if dx != 0 or dy != 0:
+                object_manager.translate_selected(dx, dy)
+                self.drag_start = (x, y)
+    
+    def on_release(self, x, y, object_manager):
+        self.dragging = False
+        self.drag_start = None
+    
+    def get_cursor(self):
+        return "hand2"
+
+
+class VectorFillTool(VectorTool):
+    """Flood fill - creates filled rectangle covering area"""
+    
+    def __init__(self, color=(0, 0, 0, 255)):
+        super().__init__(color)
+    
+    def on_press(self, x, y, object_manager):
+        # For now, just add a pixel
+        # TODO: Implement smart flood fill
+        object_manager.add_object(VectorPixel(x, y, self.color))
+    
+    def on_drag(self, x, y, object_manager):
+        pass
+    
+    def on_release(self, x, y, object_manager):
+        pass
