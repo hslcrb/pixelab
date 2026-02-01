@@ -8,10 +8,10 @@ from tkinter import colorchooser
 class ColorPicker(tk.Frame):
     """Color selection and palette panel"""
     
-    def __init__(self, parent, app, palette):
+    def __init__(self, parent, palette, on_change_callback):
         super().__init__(parent, bg="#2b2b2b", width=200)
-        self.app = app
         self.palette = palette
+        self.on_change_callback = on_change_callback
         self.pack_propagate(False)
         
         self.current_color = (0, 0, 0, 255)
@@ -162,8 +162,9 @@ class ColorPicker(tk.Frame):
         hex_color = f"#{r:02x}{g:02x}{b:02x}"
         self.current_color_canvas.config(bg=hex_color)
         
-        # Notify app
-        self.app.set_color(color)
+        # Notify caller
+        if self.on_change_callback:
+            self.on_change_callback(color)
     
     def refresh_palette(self):
         """Refresh palette display"""
@@ -201,4 +202,12 @@ class ColorPicker(tk.Frame):
     def _remove_color(self, index):
         """Remove color from palette"""
         self.palette.remove_color(index)
+        self.refresh_palette()
+    
+    def update_current_color(self, color):
+        """Update current color (alias for set_color)"""
+        self.set_color(color)
+    
+    def refresh(self):
+        """Refresh palette (alias for refresh_palette)"""
         self.refresh_palette()

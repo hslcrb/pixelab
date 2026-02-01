@@ -58,12 +58,17 @@ else
 fi
 
 # 실행할 파일 선택
-APP_FILE="pixelab_v2.py"
+APP_FILE="pixelab_full.py"
 
 # 파일 존재 확인
 if [ ! -f "$APP_FILE" ]; then
-    echo -e "${YELLOW}⚠️  $APP_FILE 없음, main.py 실행${NC}"
-    APP_FILE="main.py"
+    echo -e "${YELLOW}⚠️  $APP_FILE 없음, pixelab_v2.py 실행${NC}"
+    APP_FILE="pixelab_v2.py"
+    
+    if [ ! -f "$APP_FILE" ]; then
+        echo -e "${RED}❌ 실행 파일을 찾을 수 없습니다${NC}"
+        exit 1
+    fi
 fi
 
 # 애플리케이션 실행
