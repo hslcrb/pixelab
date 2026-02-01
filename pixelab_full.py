@@ -182,6 +182,7 @@ class PixelLabFullApp:
         self.canvas_widget.canvas.bind("<ButtonPress-1>", self._on_mouse_press)
         self.canvas_widget.canvas.bind("<B1-Motion>", self._on_mouse_drag)
         self.canvas_widget.canvas.bind("<ButtonRelease-1>", self._on_mouse_release)
+        self.canvas_widget.canvas.bind("<ButtonPress-3>", self._on_right_click)
         
         # Keyboard
         self.root.bind("<F1>", lambda e: self.toggle_language())
@@ -289,6 +290,43 @@ class PixelLabFullApp:
         px, py = self.canvas_widget.screen_to_canvas(event.x, event.y)
         if 0 <= px < self.canvas_widget.width and 0 <= py < self.canvas_widget.height:
             self.pos_label.config(text=f"{t('position')}: ({px}, {py})")
+    
+    def _on_right_click(self, event):
+        """Right-click context menu"""
+        sel_count = len(self.canvas_widget.object_manager.selected_objects)
+        
+        if sel_count == 0:
+            return
+        
+        context_menu = Menu(self.root, tearoff=0)
+        
+        # Change Color
+        context_menu.add_command(
+            label=f"색상 변경... ({sel_count}개)" if get_language() == 'ko' else f"Change Color... ({sel_count})",
+            command=self.change_selected_color
+        )
+        
+        context_menu.add_separator()
+        
+        # Group/Ungroup
+        if sel_count >= 2:
+            context_menu.add_command(label=t('group'), command=self.group_objects)
+        
+        from src.vector_objects import VectorGroup
+        has_groups = any(isinstance(obj, VectorGroup) for obj in self.canvas_widget.object_manager.selected_objects)
+        if has_groups:
+            context_menu.add_command(label=t('ungroup'), command=self.ungroup_objects)
+        
+        context_menu.add_separator()
+        context_menu.add_command(
+            label="삭제" if get_language() == 'ko' else "Delete",
+            command=self.delete_selected
+        )
+        
+        try:
+            context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            context_menu.grab_release()
     
     def _zoom_in(self):
         """Zoom in"""
@@ -455,6 +493,30 @@ class PixelLabFullApp:
         self.canvas_widget.object_manager.delete_selected()
         self.canvas_widget.render()
         self._update_status(t('ready'))
+    
+    def change_selected_color(self):
+        """Change color of selected objects"""
+        from tkinter import colorchooser
+        
+        sel_count = len(self.canvas_widget.object_manager.selected_objects)
+        if sel_count == 0:
+            return
+        
+        # Show color picker
+        color = colorchooser.askcolor(
+            color=f"#{self.current_color[0]:02x}{self.current_color[1]:02x}{self.current_color[2]:02x}",
+            title="색상 선택" if get_language() == 'ko' else "Choose Color"
+        )
+        
+        if color and color[0]:
+            r, g, b = [int(c) for c in color[0]]
+            new_color = (r, g, b, 255)
+            
+            count = self.canvas_widget.object_manager.change_selected_color(new_color)
+            self.canvas_widget.render()
+            
+            msg = f"{count}개 객체 색상 변경됨" if get_language() == 'ko' else f"Changed color of {count} objects"
+            self._update_status(msg)
     
     def clear_canvas(self):
         """Clear canvas"""

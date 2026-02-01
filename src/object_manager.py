@@ -117,6 +117,21 @@ class ObjectManager:
         
         return len(new_objects)
     
+    def change_selected_color(self, new_color):
+        """Change color of selected objects"""
+        count = 0
+        for obj in self.selected_objects:
+            if hasattr(obj, 'color'):
+                obj.color = new_color
+                count += 1
+            elif hasattr(obj, 'objects'):  # Group
+                # Change all objects in group
+                for sub_obj in obj.objects:
+                    if hasattr(sub_obj, 'color'):
+                        sub_obj.color = new_color
+                        count += 1
+        return count
+    
     def rasterize(self, width, height):
         """
         Rasterize all objects to pixel data
