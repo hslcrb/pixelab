@@ -119,17 +119,30 @@ class ObjectManager:
     
     def change_selected_color(self, new_color):
         """Change color of selected objects"""
+        print(f"[DEBUG ObjectManager] change_selected_color called with color: {new_color}")
+        print(f"[DEBUG ObjectManager] Selected objects count: {len(self.selected_objects)}")
+        
         count = 0
-        for obj in self.selected_objects:
+        for i, obj in enumerate(self.selected_objects):
+            print(f"[DEBUG ObjectManager] Object {i}: {type(obj).__name__}")
+            print(f"[DEBUG ObjectManager] Has 'color' attr: {hasattr(obj, 'color')}")
+            
             if hasattr(obj, 'color'):
+                old_color = obj.color
                 obj.color = new_color
+                print(f"[DEBUG ObjectManager] Changed {type(obj).__name__} color: {old_color} -> {new_color}")
                 count += 1
             elif hasattr(obj, 'objects'):  # Group
+                print(f"[DEBUG ObjectManager] Processing group with {len(obj.objects)} objects")
                 # Change all objects in group
-                for sub_obj in obj.objects:
+                for j, sub_obj in enumerate(obj.objects):
                     if hasattr(sub_obj, 'color'):
+                        old_color = sub_obj.color
                         sub_obj.color = new_color
+                        print(f"[DEBUG ObjectManager] Changed group object {j} color: {old_color} -> {new_color}")
                         count += 1
+        
+        print(f"[DEBUG ObjectManager] Total changed: {count} objects")
         return count
     
     def rasterize(self, width, height):

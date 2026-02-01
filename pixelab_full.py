@@ -295,7 +295,10 @@ class PixelLabFullApp:
         """Right-click context menu"""
         sel_count = len(self.canvas_widget.object_manager.selected_objects)
         
+        print(f"[DEBUG] Right-click: {sel_count} objects selected")
+        
         if sel_count == 0:
+            print("[DEBUG] No objects selected, showing no menu")
             return
         
         context_menu = Menu(self.root, tearoff=0)
@@ -474,19 +477,30 @@ class PixelLabFullApp:
     
     def group_objects(self):
         """Group selected objects"""
+        sel_count = len(self.canvas_widget.object_manager.selected_objects)
+        print(f"[DEBUG] group_objects: {sel_count} objects selected")
+        
         group = self.canvas_widget.object_manager.group_selected()
         if group:
+            print(f"[DEBUG] Created group with {len(group.objects)} objects")
+            self.canvas_widget.need_render = True
             self.canvas_widget.render()
             self._update_status(f"{t('grouped')}: {len(group.objects)} {t('objects')}")
         else:
+            print("[DEBUG] Failed to create group (need 2+ objects)")
             messagebox.showinfo(t('group'), "Select 2+ objects to group")
     
     def ungroup_objects(self):
         """Ungroup selected groups"""
+        print(f"[DEBUG] ungroup_objects called")
         count = self.canvas_widget.object_manager.ungroup_selected()
+        print(f"[DEBUG] Ungrouped {count} objects")
         if count > 0:
+            self.canvas_widget.need_render = True
             self.canvas_widget.render()
             self._update_status(f"{t('ungrouped')}: {count} {t('objects')}")
+        else:
+            print("[DEBUG] No groups to ungroup")
     
     def delete_selected(self):
         """Delete selected objects"""
@@ -499,7 +513,10 @@ class PixelLabFullApp:
         from tkinter import colorchooser
         
         sel_count = len(self.canvas_widget.object_manager.selected_objects)
+        print(f"[DEBUG] change_selected_color: {sel_count} objects selected")
+        
         if sel_count == 0:
+            print("[DEBUG] No objects selected for color change")
             return
         
         # Show color picker
@@ -508,12 +525,21 @@ class PixelLabFullApp:
             title="색상 선택" if get_language() == 'ko' else "Choose Color"
         )
         
+        print(f"[DEBUG] Color picker result: {color}")
+        
         if color and color[0]:
             r, g, b = [int(c) for c in color[0]]
             new_color = (r, g, b, 255)
             
+            print(f"[DEBUG] New color: {new_color}")
+            
             count = self.canvas_widget.object_manager.change_selected_color(new_color)
+            print(f"[DEBUG] Changed {count} objects")
+            
+            # Force re-render by setting need_render flag
+            self.canvas_widget.need_render = True
             self.canvas_widget.render()
+            print("[DEBUG] Canvas rendered")
             
             msg = f"{count}개 객체 색상 변경됨" if get_language() == 'ko' else f"Changed color of {count} objects"
             self._update_status(msg)
