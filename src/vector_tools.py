@@ -265,44 +265,84 @@ class VectorEyedropperTool(VectorTool):
 
 
 class VectorSelectTool(VectorTool):
-    """Selects and moves vector objects"""
+    """Selects and moves vector objects with marquee selection"""
     
     def __init__(self):
         super().__init__()
-        self.dragging = False
+        self.mode = None  # 'move' or 'marquee'
         self.drag_start = None
         self.selected_obj = None
+        self.marquee_rect = None  # (x1, y1, x2, y2) for preview
     
     def on_press(self, x, y, object_manager):
         # Try to select object at position
         obj = object_manager.get_object_at(x, y)
         
         if obj:
+            # Clicking on an object - prepare to move
             if obj not in object_manager.selected_objects:
                 # Deselect others and select this
                 object_manager.deselect_all()
                 object_manager.select_object(obj)
             
             self.selected_obj = obj
-            self.dragging = True
+            self.mode = 'move'
             self.drag_start = (x, y)
         else:
-            # Deselect all
+            # Clicking on empty space - start marquee selection
             object_manager.deselect_all()
             self.selected_obj = None
+            self.mode = 'marquee'
+            self.drag_start = (x, y)
+            self.marquee_rect = (x, y, x, y)
     
     def on_drag(self, x, y, object_manager):
-        if self.dragging and self.drag_start and self.selected_obj:
+        if self.mode == 'move' and self.drag_start and self.selected_obj:
+            # Move selected objects
             dx = x - self.drag_start[0]
             dy = y - self.drag_start[1]
             
             if dx != 0 or dy != 0:
                 object_manager.translate_selected(dx, dy)
                 self.drag_start = (x, y)
+        
+        elif self.mode == 'marquee' and self.drag_start:
+            # Update marquee rectangle
+            x1, y1 = self.drag_start
+            self.marquee_rect = (
+                min(x1, x),
+                min(y1, y),
+                max(x1, x),
+                max(y1, y)
+            )
     
     def on_release(self, x, y, object_manager):
-        self.dragging = False
+        if self.mode == 'marquee' and self.marquee_rect:
+            # Select all objects within marquee
+            x1, y1, x2, y2 = self.marquee_rect
+            
+            for obj in object_manager.objects:
+                # Get object bounds
+                bounds = obj.get_bounds()
+                obj_x1, obj_y1, obj_x2, obj_y2 = bounds
+                
+                # Check if object is within or intersects marquee
+                if (obj_x1 <= x2 and obj_x2 >= x1 and
+                    obj_y1 <= y2 and obj_y2 >= y1):
+                    object_manager.select_object(obj)
+        
+        self.mode = None
         self.drag_start = None
+        self.marquee_rect = None
+    
+    def get_preview_object(self):
+        """Return marquee rectangle for preview"""
+        if self.mode == 'marquee' and self.marquee_rect:
+            from .vector_objects import VectorRectangle
+            x1, y1, x2, y2 = self.marquee_rect
+            # Return a semi-transparent blue rectangle
+            return VectorRectangle(x1, y1, x2, y2, (100, 150, 255, 100), filled=False)
+        return None
     
     def get_cursor(self):
         return "hand2"
