@@ -257,16 +257,15 @@ class VectorCanvas:
                     _, sy2 = self.canvas_to_screen(x, self.height)
                     draw.line([sx, sy1, sx, sy2], fill='#404040', width=1)
             
-            # Draw selection overlays (marquee-style: blue translucent)
+            # Draw selection outlines (Mint color)
             for obj in self.object_manager.selected_objects:
                 if hasattr(obj, 'get_bounds'):
                     x0, y0, x1, y1 = obj.get_bounds()
                     sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
                     sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
                     
-                    # Draw blue translucent rectangle
-                    # Use a slightly transparent blue fill and a more solid blue outline
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff66', outline='#4080ff', width=2)
+                    # Draw mint outline
+                    draw.rectangle([sx0, sy0, sx1, sy1], outline='#00ffff', width=2)
             
             # Update canvas
             self.photo_image = ImageTk.PhotoImage(img)
