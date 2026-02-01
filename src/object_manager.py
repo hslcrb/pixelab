@@ -118,31 +118,22 @@ class ObjectManager:
         return len(new_objects)
     
     def change_selected_color(self, new_color):
-        """Change color of selected objects"""
-        print(f"[DEBUG ObjectManager] change_selected_color called with color: {new_color}")
-        print(f"[DEBUG ObjectManager] Selected objects count: {len(self.selected_objects)}")
-        
+        """Change color of selected objects and groups"""
         count = 0
-        for i, obj in enumerate(self.selected_objects):
-            print(f"[DEBUG ObjectManager] Object {i}: {type(obj).__name__}")
-            print(f"[DEBUG ObjectManager] Has 'color' attr: {hasattr(obj, 'color')}")
-            
-            if hasattr(obj, 'color'):
-                old_color = obj.color
-                obj.color = new_color
-                print(f"[DEBUG ObjectManager] Changed {type(obj).__name__} color: {old_color} -> {new_color}")
-                count += 1
-            elif hasattr(obj, 'objects'):  # Group
-                print(f"[DEBUG ObjectManager] Processing group with {len(obj.objects)} objects")
-                # Change all objects in group
-                for j, sub_obj in enumerate(obj.objects):
+        for obj in self.selected_objects:
+            # Check if it's a group (VectorGroup doesn't typically use its own color)
+            from .vector_objects import VectorGroup
+            if isinstance(obj, VectorGroup):
+                # Change all objects inside the group
+                for sub_obj in obj.objects:
                     if hasattr(sub_obj, 'color'):
-                        old_color = sub_obj.color
                         sub_obj.color = new_color
-                        print(f"[DEBUG ObjectManager] Changed group object {j} color: {old_color} -> {new_color}")
                         count += 1
+            # Also change the object's own color if it has one
+            elif hasattr(obj, 'color'):
+                obj.color = new_color
+                count += 1
         
-        print(f"[DEBUG ObjectManager] Total changed: {count} objects")
         return count
     
     def rasterize(self, width, height):

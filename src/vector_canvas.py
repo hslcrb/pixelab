@@ -207,6 +207,7 @@ class VectorCanvas:
                 preview_pixels = self.preview_object.rasterize(self.width, self.height)
                 for x, y, color in preview_pixels:
                     if 0 <= y < self.height and 0 <= x < self.width:
+                        # Simple blend for preview
                         pixels[y][x] = color
             
             # Render pixels to screen
@@ -256,7 +257,7 @@ class VectorCanvas:
                     _, sy2 = self.canvas_to_screen(x, self.height)
                     draw.line([sx, sy1, sx, sy2], fill='#404040', width=1)
             
-            # Draw selection overlays (blue translucent)
+            # Draw selection overlays (marquee-style: blue translucent)
             for obj in self.object_manager.selected_objects:
                 if hasattr(obj, 'get_bounds'):
                     x0, y0, x1, y1 = obj.get_bounds()
@@ -264,79 +265,8 @@ class VectorCanvas:
                     sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
                     
                     # Draw blue translucent rectangle
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff88', outline='#4080ff', width=2)
-            # Draw selection overlays (blue translucent)
-            for obj in self.object_manager.selected_objects:
-                if hasattr(obj, 'get_bounds'):
-                    x0, y0, x1, y1 = obj.get_bounds()
-                    sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
-                    sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
-                    
-                    # Draw blue translucent rectangle
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff88', outline='#4080ff', width=2)
-            # Draw selection overlays (blue translucent)
-            for obj in self.object_manager.selected_objects:
-                if hasattr(obj, 'get_bounds'):
-                    x0, y0, x1, y1 = obj.get_bounds()
-                    sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
-                    sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
-                    
-                    # Draw blue translucent rectangle
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff88', outline='#4080ff', width=2)
-            # Draw selection overlays (blue translucent)
-            for obj in self.object_manager.selected_objects:
-                if hasattr(obj, 'get_bounds'):
-                    x0, y0, x1, y1 = obj.get_bounds()
-                    sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
-                    sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
-                    
-                    # Draw blue translucent rectangle
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff88', outline='#4080ff', width=2)
-            # Draw selection overlays (blue translucent)
-            for obj in self.object_manager.selected_objects:
-                if hasattr(obj, 'get_bounds'):
-                    x0, y0, x1, y1 = obj.get_bounds()
-                    sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
-                    sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
-                    
-                    # Draw blue translucent rectangle
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff88', outline='#4080ff', width=2)
-            # Draw selection overlays (blue translucent)
-            for obj in self.object_manager.selected_objects:
-                if hasattr(obj, 'get_bounds'):
-                    x0, y0, x1, y1 = obj.get_bounds()
-                    sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
-                    sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
-                    
-                    # Draw blue translucent rectangle
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff88', outline='#4080ff', width=2)
-            # Draw selection overlays (blue translucent)
-            for obj in self.object_manager.selected_objects:
-                if hasattr(obj, 'get_bounds'):
-                    x0, y0, x1, y1 = obj.get_bounds()
-                    sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
-                    sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
-                    
-                    # Draw blue translucent rectangle
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff88', outline='#4080ff', width=2)
-            # Draw selection overlays (blue translucent)
-            for obj in self.object_manager.selected_objects:
-                if hasattr(obj, 'get_bounds'):
-                    x0, y0, x1, y1 = obj.get_bounds()
-                    sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
-                    sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
-                    
-                    # Draw blue translucent rectangle
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff88', outline='#4080ff', width=2)
-            # Draw selection overlays (blue translucent)
-            for obj in self.object_manager.selected_objects:
-                if hasattr(obj, 'get_bounds'):
-                    x0, y0, x1, y1 = obj.get_bounds()
-                    sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
-                    sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
-                    
-                    # Draw blue translucent rectangle
-                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff88', outline='#4080ff', width=2)
+                    # Use a slightly transparent blue fill and a more solid blue outline
+                    draw.rectangle([sx0, sy0, sx1, sy1], fill='#6496ff66', outline='#4080ff', width=2)
             
             # Update canvas
             self.photo_image = ImageTk.PhotoImage(img)
