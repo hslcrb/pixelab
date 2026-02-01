@@ -216,7 +216,7 @@ class PixelLabFullApp:
         if name in self.tools:
             self.current_tool = self.tools[name]
             self.current_tool.set_color(self.current_color)
-            self.toolbar.select_tool_by_name(name)
+            # Don't call toolbar - it causes infinite recursion
             self._update_status(f"{t('tool')}: {t(name.lower())}")
     
     def set_tool_size(self, size):
