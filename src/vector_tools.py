@@ -190,7 +190,15 @@ class VectorRectangleTool(VectorTool):
         if self.start_pos:
             x0, y0 = self.start_pos
             if (x0, y0) != (x, y):
-                object_manager.add_object(VectorRectangle(x0, y0, x, y, self.color, self.filled))
+                rect = VectorRectangle(x0, y0, x, y, self.color, self.filled)
+                
+                # If filled, group the pixels for easier manipulation
+                if self.filled:
+                    from .vector_objects import VectorGroup
+                    # Create as a single rect object (not pixel group)
+                    object_manager.add_object(rect)
+                else:
+                    object_manager.add_object(rect)
             else:
                 # Single pixel
                 object_manager.add_object(VectorPixel(x, y, self.color))
@@ -316,3 +324,9 @@ class VectorFillTool(VectorTool):
     
     def on_release(self, x, y, object_manager):
         pass
+
+
+# Alias for compatibility
+class VectorMouseTool(VectorSelectTool):
+    """Mouse tool - alias for Select tool"""
+    pass

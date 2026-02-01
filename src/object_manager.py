@@ -67,6 +67,56 @@ class ObjectManager:
         for obj in self.selected_objects:
             obj.translate(dx, dy)
     
+    def group_selected(self):
+        """Group selected objects"""
+        if len(self.selected_objects) < 2:
+            return None
+        
+        from .vector_objects import VectorGroup
+        
+        # Create group
+        group = VectorGroup(self.selected_objects.copy(), f"Group {len(self.objects)}")
+        
+        # Remove individual objects
+        for obj in self.selected_objects:
+            if obj in self.objects:
+                self.objects.remove(obj)
+        
+        # Add group
+        self.objects.append(group)
+        
+        # Select group
+        self.selected_objects.clear()
+        self.selected_objects.append(group)
+        group.selected = True
+        
+        return group
+    
+    def ungroup_selected(self):
+        """Ungroup selected groups"""
+        from .vector_objects import VectorGroup
+        
+        new_objects = []
+        
+        for obj in self.selected_objects:
+            if isinstance(obj, VectorGroup):
+                # Remove group
+                if obj in self.objects:
+                    self.objects.remove(obj)
+                
+                # Add ungrouped objects
+                ungrouped = obj.ungroup()
+                self.objects.extend(ungrouped)
+                new_objects.extend(ungrouped)
+        
+        # Select ungrouped objects
+        self.selected_objects.clear()
+        for obj in new_objects:
+            obj.selected = True
+            self.selected_objects.append(obj)
+        
+        return len(new_objects)
+    
     def rasterize(self, width, height):
         """
         Rasterize all objects to pixel data

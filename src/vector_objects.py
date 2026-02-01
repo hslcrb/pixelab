@@ -434,13 +434,86 @@ class VectorPath(VectorObject):
         )
 
 
+class VectorGroup(VectorObject):
+    """Group of vector objects that can be manipulated together"""
+    
+    def __init__(self, objects=None, name="Group"):
+        super().__init__()
+        self.objects = objects or []
+        self.name = name
+    
+    def add_object(self, obj):
+        """Add object to group"""
+        self.objects.append(obj)
+    
+    def remove_object(self, obj):
+        """Remove object from group"""
+        if obj in self.objects:
+            self.objects.remove(obj)
+    
+    def get_bounds(self):
+        """Get bounding box of all objects in group"""
+        if not self.objects:
+            return (0, 0, 0, 0)
+        
+        bounds = [obj.get_bounds() for obj in self.objects]
+        min_x = min(b[0] for b in bounds)
+        min_y = min(b[1] for b in bounds)
+        max_x = max(b[2] for b in bounds)
+        max_y = max(b[3] for b in bounds)
+        
+        return (min_x, min_y, max_x, max_y)
+    
+    def rasterize(self, width, height):
+        """Rasterize all objects in group"""
+        pixels = []
+        for obj in self.objects:
+            pixels.extend(obj.rasterize(width, height))
+        return pixels
+    
+    def contains_point(self, x, y):
+        """Check if any object in group contains point"""
+        for obj in self.objects:
+            if obj.contains_point(x, y):
+                return True
+        return False
+    
+    def translate(self, dx, dy):
+        """Translate all objects in group"""
+        for obj in self.objects:
+            obj.translate(dx, dy)
+    
+    def ungroup(self):
+        """Return list of ungrouped objects"""
+        return self.objects.copy()
+    
+    def to_dict(self):
+        return {
+            'type': 'group',
+            'name': self.name,
+            'objects': [obj.to_dict() for obj in self.objects]
+        }
+    
+    @staticmethod
+    def from_dict(data):
+        objects = []
+        for obj_data in data.get('objects', []):
+            obj = create_object_from_dict(obj_data)
+            if obj:
+                objects.append(obj)
+        
+        group = VectorGroup(objects, data.get('name', 'Group'))
+        return group
+
+
 # Object factory for deserialization
 OBJECT_TYPES = {
     'pixel': VectorPixel,
     'line': VectorLine,
     'rectangle': VectorRectangle,
     'circle': VectorCircle,
-    'path': VectorPath
+    'path': VectorPath,
+    'group': VectorGroup
 }
 
 
