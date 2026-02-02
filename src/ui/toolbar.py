@@ -62,89 +62,120 @@ class Toolbar(tk.Frame):
         
         # Tool options
         separator = tk.Frame(self, bg="#444444", height=2)
-        separator.pack(fill=tk.X, pady=10, padx=8)
+        separator.pack(fill=tk.X, pady=(15, 10), padx=10)
         
         self.options_label = tk.Label(
             self,
             text=t('options_label'),
             bg="#2b2b2b",
-            fg="#ffffff",
-            font=("Arial", 9, "bold")
+            fg="#61afef", # Bright accent color for section header
+            font=("Arial", 10, "bold")
         )
-        self.options_label.pack(pady=(5, 5))
+        self.options_label.pack(pady=(0, 10))
         
-        # Brush size (for brush and eraser)
-        size_frame = tk.Frame(self, bg="#2b2b2b")
-        size_frame.pack(fill=tk.X, padx=8, pady=5)
+        # --- Brush Size ---
+        size_container = tk.Frame(self, bg="#2b2b2b")
+        size_container.pack(fill=tk.X, padx=10, pady=5)
         
         self.size_label = tk.Label(
-            size_frame,
+            size_container,
             text=t('size_label'),
             bg="#2b2b2b",
-            fg="#ffffff",
-            font=("Arial", 8)
+            fg="#abb2bf",
+            font=("Arial", 9)
         )
-        self.size_label.pack(side=tk.LEFT)
+        self.size_label.pack(side=tk.TOP, anchor=tk.W)
         
         self.size_var = tk.IntVar(value=3)
+        # Using a Spinbox for more precise control and clarity
+        self.size_spin = tk.Spinbox(
+            size_container,
+            from_=1, to=100,
+            textvariable=self.size_var,
+            bg="#1e1e1e",
+            fg="#ffffff",
+            insertbackground="#ffffff",
+            buttonbackground="#3c3c3c",
+            relief=tk.FLAT,
+            font=("Arial", 10, "bold"),
+            width=5,
+            command=lambda: self._on_size_change(self.size_var.get())
+        )
+        self.size_spin.pack(side=tk.LEFT, pady=2, fill=tk.X, expand=True)
+        # Add a small slider for quick adjustment too
         self.size_scale = tk.Scale(
-            size_frame,
-            from_=1,
-            to=10,
+            size_container,
+            from_=1, to=100,
             orient=tk.HORIZONTAL,
             variable=self.size_var,
-            bg="#3c3c3c",
+            bg="#2b2b2b",
             fg="#ffffff",
             highlightthickness=0,
-            troughcolor="#2b2b2b",
-            activebackground="#4c4c4c",
+            troughcolor="#1e1e1e",
+            activebackground="#61afef",
+            showvalue=0,
             command=self._on_size_change
         )
-        self.size_scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
+        self.size_scale.pack(side=tk.LEFT, padx=(5, 0), fill=tk.X, expand=True)
         
-        # Fill option (for shapes)
+        # --- Fill Option ---
         self.filled_var = tk.BooleanVar(value=False)
+        fill_frame = tk.Frame(self, bg="#3c3c3c", padx=5, pady=2)
+        fill_frame.pack(fill=tk.X, padx=10, pady=10)
+        
         self.filled_check = tk.Checkbutton(
-            self,
+            fill_frame,
             text=t('filled_label'),
             variable=self.filled_var,
-            bg="#2b2b2b",
+            bg="#3c3c3c",
             fg="#ffffff",
-            selectcolor="#3c3c3c",
-            activebackground="#2b2b2b",
-            activeforeground="#ffffff",
+            selectcolor="#1e1e1e",
+            activebackground="#3c3c3c",
+            activeforeground="#61afef",
+            font=("Arial", 9),
+            relief=tk.FLAT,
             command=self._on_filled_change
         )
-        self.filled_check.pack(padx=8, pady=2)
+        self.filled_check.pack(side=tk.LEFT)
         
-        # Pixel scale (experimental "make pixel smaller/larger")
-        pixel_frame = tk.Frame(self, bg="#2b2b2b")
-        pixel_frame.pack(fill=tk.X, padx=8, pady=5)
+        # --- Zoom (Pixel Scale) ---
+        pixel_container = tk.Frame(self, bg="#2b2b2b")
+        pixel_container.pack(fill=tk.X, padx=10, pady=(10, 5))
         
         self.pixel_label = tk.Label(
-            pixel_frame,
+            pixel_container,
             text=t('pixel_scale'),
             bg="#2b2b2b",
-            fg="#ffffff",
-            font=("Arial", 8)
+            fg="#abb2bf",
+            font=("Arial", 9)
         )
-        self.pixel_label.pack(side=tk.LEFT)
+        self.pixel_label.pack(side=tk.TOP, anchor=tk.W)
         
         self.pixel_var = tk.IntVar(value=10)
+        self.zoom_display = tk.Label(
+            pixel_container,
+            textvariable=self.pixel_var,
+            bg="#2b2b2b",
+            fg="#61afef",
+            font=("Arial", 9, "bold")
+        )
+        self.zoom_display.pack(side=tk.TOP, anchor=tk.E, pady=(0, 2))
+        
         self.pixel_scale = tk.Scale(
-            pixel_frame,
+            pixel_container,
             from_=1,
             to=50,
             orient=tk.HORIZONTAL,
             variable=self.pixel_var,
-            bg="#3c3c3c",
+            bg="#2b2b2b",
             fg="#ffffff",
             highlightthickness=0,
-            troughcolor="#2b2b2b",
-            activebackground="#4c4c4c",
+            troughcolor="#1e1e1e",
+            activebackground="#61afef",
+            showvalue=0,
             command=self._on_pixel_change
         )
-        self.pixel_scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
+        self.pixel_scale.pack(fill=tk.X, expand=True)
 
     def refresh_texts(self):
         """Update texts for current language"""

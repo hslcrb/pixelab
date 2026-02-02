@@ -23,8 +23,11 @@ except ImportError as e:
     sys.exit(1)
 
 
+# Global Constants
+VERSION = "2.1"
+
 class PixelLabFullApp:
-    """Complete PixeLab application with full UI"""
+    """Main Application Class"""
     
     def __init__(self, root):
         self.root = root
@@ -47,6 +50,15 @@ class PixelLabFullApp:
         self._setup_ui()
         self._create_menu()
         self._bind_events()
+        
+        # Check for updates in background
+        from src.utils.updater import UpdateManager
+        from src.ui.toast import show_update_toast
+        self.updater = UpdateManager(VERSION)
+        # Delay check slightly to ensure UI is ready
+        self.root.after(2000, lambda: self.updater.check_for_updates(
+            lambda v, url: show_update_toast(self.root, v, url)
+        ))
         
         # Status
         self._update_status()
@@ -472,7 +484,7 @@ class PixelLabFullApp:
 
     def show_about(self):
         """Show about dialog"""
-        messagebox.showinfo(t('about'), "PixeLab v2.1\nVector-Pixel Hybrid Editor\nCreated by rheehose")
+        messagebox.showinfo(t('about'), f"PixeLab v{VERSION}\nVector-Pixel Hybrid Editor\nCreated by rheehose")
     
     def show_logs(self):
         """Show activity logs"""
