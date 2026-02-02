@@ -224,7 +224,6 @@ class PixelLabFullApp:
         # Help menu
         help_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label=t('help'), menu=help_menu)
-        help_menu.add_command(label=t('help'), command=self.show_help)
         help_menu.add_command(label=t('shortcuts'), command=self.show_shortcuts)
         help_menu.add_command(label=t('about'), command=self.show_about)
         
