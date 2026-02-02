@@ -1,32 +1,40 @@
-# PixeLab 예제 파일들
+# 📦 PixeLab Examples & Samples
 
-이 폴더에는 PixeLab으로 작업을 시작하는 데 도움이 되는 샘플 `.plb` 파일들이 포함되어 있습니다.
+Explore the power of PixeLab with these sample projects. These files showcase different aspects of the `.plb` format (v2.1).
 
-## 예제 목록
+---
 
-### heart.plb
-간단한 8x8 하트 픽셀아트입니다.
-- 크기: 8x8
-- 기본적인 형태와 색상 사용 예시
-- 초보자에게 적합
+## 📂 Sample Library
 
-### ball.plb
-16x16 그레이스케일 구체입니다.
-- 크기: 16x16
-- 음영 처리 기법 시연
-- 중급자에게 적합
+### 1. ❤️ `heart.plb`
+- **Focus**: Basic pixel placement using `VectorPixel`.
+- **Level**: Beginner
+- **Description**: A classic 8x8 heart. Perfect for understanding how individual dots are stored.
 
-## 사용 방법
+### 2. 🌕 `ball.plb`
+- **Focus**: Shading and transparency.
+- **Level**: Intermediate
+- **Description**: A 16x16 sphere with grayscale gradients showing off alpha blending performance.
 
-1. PixeLab 실행
-2. `File → Open` 선택
-3. 이 폴더에서 원하는 `.plb` 파일 열기
-4. 자유롭게 편집하고 수정하기
-5. `File → Save As`로 새 이름으로 저장
+### 3. 🖼 `image_sample.plb` (New!)
+- **Focus**: High performance with thousands of objects.
+- **Level**: Advanced
+- **Description**: A complex scene imported from a PNG and converted to vectors. Tests the layer caching and rendering speed.
 
-## 직접 만들기
+---
 
-이 예제들을 참고하여 자신만의 픽셀아트를 만들어보세요!
-- 작은 크기(8x8, 16x16)부터 시작하기
-- 색상 팔레트를 제한하여 일관성 유지
-- 격자를 활용하여 정밀하게 작업하기
+## 🚀 How to Use
+
+1. Launch **PixeLab**.
+2. Go to `File` → `Open`.
+3. Select any `.plb` file from this directory.
+4. **Experiment!** Try ungrouping (`Ctrl+U`) the shapes or changing their colors.
+
+---
+
+## ⚡ Technical Note
+
+All these files are stored in the **v2.1 PLB JSON Format**. You can open them in any text editor to see the internal structure described in [PLB_SPEC.md](../PLB_SPEC.md).
+
+---
+*Happy Creating!* 🎨

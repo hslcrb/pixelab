@@ -12,18 +12,22 @@ class VectorFileHandler:
     
     @staticmethod
     def save_plb(filepath, canvas, palette):
-        """Save project as .plb file with vector objects"""
+        """Save project as .plb file with full workspace state"""
+        mgr_data = canvas.object_manager.to_dict()
+        
         data = {
-            "version": "2.0",  # New version for vector support
+            "version": "2.1",
             "width": canvas.width,
             "height": canvas.height,
-            "palette": palette.to_hex_list(),
-            "objects": canvas.object_manager.to_dict()['objects'],
+            "layers": mgr_data['layers'],
+            "current_layer_index": mgr_data['current_layer_index'],
+            "palette": mgr_data['palette'],
+            "logs": mgr_data.get('logs', []),
             "metadata": {
                 "created": datetime.now().isoformat(),
                 "modified": datetime.now().isoformat(),
                 "author": "PixeLab User",
-                "format": "vector"
+                "software": "PixeLab Vector"
             }
         }
         
@@ -45,8 +49,8 @@ class VectorFileHandler:
         # Version check
         version = data.get('version', '1.0')
         
-        # Support both old pixel-based (1.0) and new vector-based (2.0) formats
-        if version not in ['1.0', '2.0']:
+        # Support both old pixel-based (1.0) and new vector-based (2.0/2.1) formats
+        if version not in ['1.0', '2.0', '2.1']:
             raise ValueError(f"Unsupported PLB version: {version}")
         
         return data
