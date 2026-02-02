@@ -70,7 +70,7 @@ class PixelLabFullApp:
         self.updater = UpdateManager(VERSION)
         # Delay check slightly to ensure UI is ready
         self.root.after(2000, lambda: self.updater.check_for_updates(
-            lambda v, url: show_update_toast(self.root, v, url)
+            lambda v, _url: show_update_toast(self.root, self.updater, v)
         ))
         
         # Status
@@ -472,16 +472,16 @@ class PixelLabFullApp:
         tk.Label(frame, text=t('tools_help'), fg="white", bg="#2b2b2b", justify=tk.LEFT).pack(anchor="w", pady=5)
         
         shortcuts = [
-            "Ctrl + N: New",
-            "Ctrl + O: Open",
-            "Ctrl + S: Save",
-            "Ctrl + I: Import",
-            "Ctrl + G: Group",
-            "Ctrl + U: Ungroup",
-            "Delete: Delete Selected",
-            "G: Toggle Grid",
-            "F1: Toggle Language",
-            "Shift + Mouse Wheel: Horizontal Pan"
+            f"Ctrl + N: {t('new')}",
+            f"Ctrl + O: {t('open')}",
+            f"Ctrl + S: {t('save')}",
+            f"Ctrl + I: {t('import_image')}",
+            f"Ctrl + G: {t('group')}",
+            f"Ctrl + U: {t('ungroup')}",
+            f"Delete: {t('delete')}",
+            f"G: {t('toggle_grid')}",
+            f"F1: {t('toggle_language_shortcut') if get_language() == 'ko' else 'Toggle Language'}",
+            f"Shift + Mouse Wheel: {t('horizontal_pan') if get_language() == 'ko' else 'Horizontal Pan'}"
         ]
         
         s_frame = tk.Frame(frame, bg="#3c3c3c", padx=10, pady=10)
@@ -494,7 +494,7 @@ class PixelLabFullApp:
 
     def show_about(self):
         """Show about dialog"""
-        messagebox.showinfo(t('about'), f"PixeLab v{VERSION}\nVector-Pixel Hybrid Editor\nCreated by rheehose")
+        messagebox.showinfo(t('about'), f"PixeLab v{VERSION}\n{t('vector_pixel_hybrid')}\n{t('created_by')}")
     
     def show_logs(self):
         """Show activity logs"""
@@ -561,14 +561,14 @@ class PixelLabFullApp:
             try:
                 w = int(width_var.get())
                 h = int(height_var.get())
-                if 1 <= w <= 1024 and 1 <= h <= 1024:
+                if 1 <= w <= 8192 and 1 <= h <= 8192:
                     self.canvas_widget.resize_canvas(w, h)
                     dialog.destroy()
-                    self._update_status(f"Canvas resized to {w}x{h}")
+                    self._update_status(t('canvas_resized').format(w=w, h=h))
                 else:
-                    messagebox.showerror("Error", "Size must be between 1 and 1024")
+                    messagebox.showerror(t('error'), t('size_limit_error'))
             except ValueError:
-                messagebox.showerror("Error", "Invalid input")
+                messagebox.showerror(t('error'), t('invalid_input_error'))
         
         btn_apply = tk.Button(main_frame, text=t('apply'), command=apply)
         btn_apply.grid(row=2, column=0, columnspan=2, pady=10)
@@ -581,7 +581,7 @@ class PixelLabFullApp:
             self.save_file()
         
         # Get canvas size
-        size = simpledialog.askinteger(t('new'), f"{t('canvas_size')}:", initialvalue=32, minvalue=8, maxvalue=512)
+        size = simpledialog.askinteger(t('new'), f"{t('canvas_size')}:", initialvalue=32, minvalue=1, maxvalue=8192)
         if size:
             self.canvas_widget.resize_canvas(size, size)
             self.canvas_widget.object_manager.clear()
@@ -594,7 +594,7 @@ class PixelLabFullApp:
     def open_file(self):
         """Open file"""
         filepath = filedialog.askopenfilename(
-            title="Open PLB File",
+            title=t('open_plb_title'),
             filetypes=[("PixeLab Files", "*.plb"), ("All Files", "*.*")]
         )
         if filepath:
@@ -796,7 +796,7 @@ class PixelLabFullApp:
     
     def clear_canvas(self):
         """Clear canvas"""
-        if messagebox.askyesno("Clear", "Clear all objects?"):
+        if messagebox.askyesno(t('ask_clear_title'), t('ask_clear_canvas')):
             self.canvas_widget.clear()
             self._update_status(t('canvas_cleared'))
     

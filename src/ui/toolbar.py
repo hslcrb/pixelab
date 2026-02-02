@@ -138,44 +138,8 @@ class Toolbar(tk.Frame):
         )
         self.filled_check.pack(side=tk.LEFT)
         
-        # --- Zoom (Pixel Scale) ---
-        pixel_container = tk.Frame(self, bg="#2b2b2b")
-        pixel_container.pack(fill=tk.X, padx=10, pady=(10, 5))
-        
-        self.pixel_label = tk.Label(
-            pixel_container,
-            text=t('pixel_scale'),
-            bg="#2b2b2b",
-            fg="#abb2bf",
-            font=("Arial", 9)
-        )
-        self.pixel_label.pack(side=tk.TOP, anchor=tk.W)
-        
-        self.pixel_var = tk.IntVar(value=10)
-        self.zoom_display = tk.Label(
-            pixel_container,
-            textvariable=self.pixel_var,
-            bg="#2b2b2b",
-            fg="#61afef",
-            font=("Arial", 9, "bold")
-        )
-        self.zoom_display.pack(side=tk.TOP, anchor=tk.E, pady=(0, 2))
-        
-        self.pixel_scale = tk.Scale(
-            pixel_container,
-            from_=1,
-            to=50,
-            orient=tk.HORIZONTAL,
-            variable=self.pixel_var,
-            bg="#2b2b2b",
-            fg="#ffffff",
-            highlightthickness=0,
-            troughcolor="#1e1e1e",
-            activebackground="#61afef",
-            showvalue=0,
-            command=self._on_pixel_change
-        )
-        self.pixel_scale.pack(fill=tk.X, expand=True)
+        # Pixel scale (Zoom) removed as requested
+        pass
 
     def refresh_texts(self):
         """Update texts for current language"""

@@ -86,7 +86,8 @@ class LayerPanel(tk.Frame):
             lock_btn.bind("<Button-1>", lambda e, idx=i: self._toggle_lock(idx))
 
     def _add_layer(self):
-        self.object_manager.add_layer()
+        from src.i18n import t
+        self.object_manager.add_layer(name=f"{t('layer')} {len(self.object_manager.layers) + 1}")
         self.refresh_list()
         self.refresh_callback()
 
@@ -95,7 +96,8 @@ class LayerPanel(tk.Frame):
             self.refresh_list()
             self.refresh_callback()
         else:
-            messagebox.showwarning("Warning", "Cannot remove last layer")
+            from src.i18n import t
+            messagebox.showwarning(t('warning'), t('last_layer_warning'))
 
     def _select_layer(self, index):
         self.object_manager.current_layer_index = index
@@ -113,8 +115,9 @@ class LayerPanel(tk.Frame):
         self.refresh_callback()
 
     def _rename_layer(self, index):
+        from src.i18n import t
         current_name = self.object_manager.layers[index].name
-        new_name = simpledialog.askstring("Rename Layer", "Enter new name:", initialvalue=current_name)
+        new_name = simpledialog.askstring(t('rename_layer'), t('enter_new_name'), initialvalue=current_name)
         if new_name:
             self.object_manager.layers[index].name = new_name
             self.refresh_list()

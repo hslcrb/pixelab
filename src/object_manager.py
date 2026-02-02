@@ -43,7 +43,8 @@ class ObjectManager:
         self.selected_objects: List[VectorObject] = []
         self.palette_colors = [] # Store palette in manager for saving
         self.logs = [] # Activity logs
-        self.add_log("Project initialized")
+        from src.i18n import t
+        self.add_log(t('project_initialized'))
     
     def add_log(self, message):
         """Add a timestamped log entry"""
@@ -72,7 +73,8 @@ class ObjectManager:
         new_layer = Layer(name)
         self.layers.append(new_layer)
         self.current_layer_index = len(self.layers) - 1
-        self.add_log(f"Added layer: {name}")
+        from src.i18n import t
+        self.add_log(t('added_layer').format(name=name))
         return new_layer
 
     def remove_layer(self, index):
@@ -85,7 +87,8 @@ class ObjectManager:
             
             del self.layers[index]
             self.current_layer_index = min(self.current_layer_index, len(self.layers) - 1)
-            self.add_log(f"Removed layer: {name}")
+            from src.i18n import t
+            self.add_log(t('removed_layer').format(name=name))
             return True
         return False
 
@@ -100,7 +103,8 @@ class ObjectManager:
         """Add a vector object to current layer"""
         if not self.current_layer.locked:
             self.current_layer.objects.append(obj)
-            self.add_log(f"Added {type(obj).__name__}")
+            from src.i18n import t
+            self.add_log(t('added_obj').format(type=type(obj).__name__))
     
     def remove_object(self, obj: VectorObject):
         """Remove a vector object from whichever layer it is in"""
@@ -116,7 +120,8 @@ class ObjectManager:
         self.layers = [Layer("Layer 1")]
         self.current_layer_index = 0
         self.selected_objects.clear()
-        self.add_log("Canvas cleared")
+        from src.i18n import t
+        self.add_log(t('canvas_cleared'))
     
     def get_object_at(self, x, y) -> Optional[VectorObject]:
         """Get top object at given position across all visible layers"""
@@ -157,7 +162,8 @@ class ObjectManager:
                     break
         self.selected_objects.clear()
         if deleted_count > 0:
-            self.add_log(f"Deleted {deleted_count} objects")
+            from src.i18n import t
+            self.add_log(t('deleted_objs').format(count=deleted_count))
     
     def translate_selected(self, dx, dy):
         """Move all selected objects"""
@@ -196,7 +202,8 @@ class ObjectManager:
         self.selected_objects.clear()
         self.select_object(group)
         
-        self.add_log(f"Grouped {count} objects")
+        from src.i18n import t
+        self.add_log(t('grouped_objs').format(count=count))
         return group
     
     def ungroup_selected(self):
@@ -228,7 +235,8 @@ class ObjectManager:
             self.select_object(obj)
         
         if groups_ungrouped > 0:
-            self.add_log(f"Ungrouped {groups_ungrouped} groups")
+            from src.i18n import t
+            self.add_log(t('ungrouped_objs').format(count=groups_ungrouped))
         
         return len(new_objects)
     
@@ -247,7 +255,8 @@ class ObjectManager:
                 count += 1
         
         if count > 0:
-            self.add_log(f"Changed color of {count} objects")
+            from src.i18n import t
+            self.add_log(t('changed_color_objs').format(count=count))
         return count
     
     def move_selected_up(self):
@@ -265,7 +274,8 @@ class ObjectManager:
                     modified = True
         
         if modified:
-            self.add_log("Moved objects forward")
+            from src.i18n import t
+            self.add_log(t('moved_objs_forward'))
         return modified
 
     def move_selected_down(self):
@@ -282,7 +292,8 @@ class ObjectManager:
                     modified = True
         
         if modified:
-            self.add_log("Moved objects backward")
+            from src.i18n import t
+            self.add_log(t('moved_objs_backward'))
         return modified
 
     def move_selected_to_front(self):
@@ -301,7 +312,8 @@ class ObjectManager:
             modified = True
             
         if modified:
-            self.add_log("Moved objects to front")
+            from src.i18n import t
+            self.add_log(t('moved_objs_front'))
         return modified
 
     def move_selected_to_back(self):
@@ -320,37 +332,46 @@ class ObjectManager:
             modified = True
             
         if modified:
-            self.add_log("Moved objects to back")
+            from src.i18n import t
+            self.add_log(t('moved_objs_back'))
         return modified
 
-    def rasterize(self, width, height):
+    def rasterize(self, width, height) -> 'Image.Image':
         """
-        Rasterize all visible layers to pixel data
-        Returns 2D array of (r, g, b, a) tuples
+        Rasterize all visible layers to a PIL Image
         """
-        pixels = [[(255, 255, 255, 0) for _ in range(width)] for _ in range(height)]
+        from PIL import Image, ImageDraw
+        
+        # Create base image with transparency
+        img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
         
         for layer in self.layers:
             if not layer.visible:
                 continue
             
             for obj in layer.objects:
+                # Get pixels from object
                 obj_pixels = obj.rasterize(width, height)
+                
+                # Draw pixels to image
+                # This is faster than manual blending in Python loop
                 for x, y, color in obj_pixels:
                     if 0 <= x < width and 0 <= y < height:
                         r, g, b, a = color
+                        # Blend with current pixel if transparency < 255
                         if a == 255:
-                            pixels[y][x] = (r, g, b, 255)
+                            img.putpixel((x, y), (r, g, b, 255))
                         elif a > 0:
-                            old_r, old_g, old_b, old_a = pixels[y][x]
+                            # Simple alpha compositing
+                            bg_r, bg_g, bg_b, bg_a = img.getpixel((x, y))
                             alpha = a / 255.0
-                            new_r = int(r * alpha + old_r * (1 - alpha))
-                            new_g = int(g * alpha + old_g * (1 - alpha))
-                            new_b = int(b * alpha + old_b * (1 - alpha))
-                            new_a = min(255, a + old_a)
-                            pixels[y][x] = (new_r, new_g, new_b, new_a)
+                            nr = int(r * alpha + bg_r * (1 - alpha))
+                            ng = int(g * alpha + bg_g * (1 - alpha))
+                            nb = int(b * alpha + bg_b * (1 - alpha))
+                            na = min(255, a + bg_a)
+                            img.putpixel((x, y), (nr, ng, nb, na))
         
-        return pixels
+        return img
 
     def to_dict(self) -> dict:
         """Serialize to dictionary including layers and palette"""

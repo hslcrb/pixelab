@@ -11,7 +11,10 @@ from .vector_objects import VectorPixel, VectorGroup
 class ProgressDialog:
     """Progress dialog for long-running operations"""
     
-    def __init__(self, parent, title="Processing..."):
+    def __init__(self, parent, title=None):
+        from src.i18n import t
+        if title is None:
+            title = t('processing')
         self.top = tk.Toplevel(parent)
         self.top.title(title)
         self.top.geometry("400x150")
@@ -25,7 +28,8 @@ class ProgressDialog:
         self.top.geometry(f"400x150+{x}+{y}")
         
         # Status label
-        self.status_label = tk.Label(self.top, text="Initializing...", font=("Arial", 10))
+        from src.i18n import t
+        self.status_label = tk.Label(self.top, text=t('initializing'), font=("Arial", 10))
         self.status_label.pack(pady=20)
         
         # Progress bar
@@ -68,8 +72,9 @@ class ImageImporter:
         Shows file dialog, progress dialog, and returns VectorGroup
         """
         # File dialog
+        from src.i18n import t
         filepath = filedialog.askopenfilename(
-            title="Import Image",
+            title=t('import_image_title'),
             filetypes=[
                 ("Image Files", "*.png *.jpg *.jpeg *.bmp *.gif *.tiff"),
                 ("PNG", "*.png"),
@@ -82,18 +87,18 @@ class ImageImporter:
             return None
         
         # Create progress dialog
-        progress = ProgressDialog(parent, "Importing Image...")
+        progress = ProgressDialog(parent, t('import_image_title'))
         
         result = {'group': None, 'error': None}
         
         def import_thread():
             try:
                 # Load image
-                progress.update(10, "Loading image...", filepath)
+                progress.update(10, t('loading_image'), filepath)
                 img = Image.open(filepath)
                 
                 # Convert to RGBA
-                progress.update(20, "Converting to RGBA...")
+                progress.update(20, t('converting'))
                 img = img.convert('RGBA')
                 
                 # Resize if too large
@@ -105,14 +110,14 @@ class ImageImporter:
                     new_width = int(orig_width * scale)
                     new_height = int(orig_height * scale)
                     
-                    progress.update(30, f"Resizing to {new_width}x{new_height}...",
+                    progress.update(30, f"{t('resizing')} ({new_width}x{new_height})...",
                                    f"Original: {orig_width}x{orig_height}")
                     img = img.resize((new_width, new_height), Image.NEAREST)
                 else:
                     new_width, new_height = orig_width, orig_height
                 
                 # Trace to pixels
-                progress.update(40, "Tracing pixels...",
+                progress.update(40, t('tracing_pixels'),
                                f"Processing {new_width}x{new_height} pixels")
                 
                 pixels_data = img.load()
@@ -134,25 +139,25 @@ class ImageImporter:
                             percent = 40 + int((processed / total_pixels) * 50)
                             progress.update(
                                 percent,
-                                "Tracing pixels...",
+                                t('tracing_pixels'),
                                 f"{processed}/{total_pixels} pixels"
                             )
                 
                 # Create group
-                progress.update(95, "Creating group...",
+                progress.update(95, t('creating_group'),
                                f"{len(objects)} objects created")
                 
                 import os
                 filename = os.path.basename(filepath)
                 group = VectorGroup(objects, f"Imported: {filename}")
                 
-                progress.update(100, "Complete!", f"Imported {len(objects)} pixels")
+                progress.update(100, t('complete'), f"{t('imported')} {len(objects)} pixels")
                 
                 result['group'] = group
                 
             except Exception as e:
                 result['error'] = str(e)
-                progress.update(0, "Error!", str(e))
+                progress.update(0, t('error'), str(e))
         
         # Run import in thread
         thread = threading.Thread(target=import_thread, daemon=True)
@@ -169,7 +174,7 @@ class ImageImporter:
         
         # Check for errors
         if result['error']:
-            messagebox.showerror("Import Error", f"Failed to import image:\n{result['error']}")
+            messagebox.showerror(t('import_error'), f"Failed to import image:\n{result['error']}")
             return None
         
         # Call callback

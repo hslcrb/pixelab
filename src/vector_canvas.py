@@ -263,9 +263,9 @@ class VectorCanvas:
     
     def get_pixel(self, x, y):
         """Get rendered pixel color at (x, y)"""
-        pixels = self.object_manager.rasterize(self.width, self.height)
-        if 0 <= y < len(pixels) and 0 <= x < len(pixels[0]):
-            return pixels[y][x]
+        img = self.object_manager.rasterize(self.width, self.height)
+        if 0 <= x < self.width and 0 <= y < self.height:
+            return img.getpixel((x, y))
         return None
     
     def add_object(self, obj):
@@ -306,16 +306,16 @@ class VectorCanvas:
     
     def copy_state(self):
         """Deep copy current state for history"""
-        return self.object_manager.copy_objects()
+        return copy.deepcopy(self.object_manager.layers)
     
     def restore_state(self, state):
         """Restore state from history"""
-        self.object_manager.restore_objects(state)
+        self.object_manager.layers = state
         self.need_render = True
         self.render()
-    
+
     def render(self):
-        """Render vector objects to pixel canvas"""
+        """Render vector objects to pixel canvas using Image scaling for performance"""
         if not self.need_render:
             return
         
@@ -326,93 +326,75 @@ class VectorCanvas:
             if canvas_w < 10 or canvas_h < 10:
                 return
             
-            # Create background image
-            img = Image.new('RGB', (canvas_w, canvas_h), color='#1e1e1e')
-            draw = ImageDraw.Draw(img)
+            # 1. Get Project Raster (1:1)
+            project_img = self.object_manager.rasterize(self.width, self.height)
             
-            # Rasterize vector objects to pixels
-            pixels = self.object_manager.rasterize(self.width, self.height)
-            
-            # Add preview object if exists
+            # 2. Add preview object if exists
             if self.preview_object:
                 preview_pixels = self.preview_object.rasterize(self.width, self.height)
                 for x, y, color in preview_pixels:
                     if 0 <= y < self.height and 0 <= x < self.width:
-                        # Simple blend for preview
-                        pixels[y][x] = color
+                        project_img.putpixel((x, y), color)
             
-            # Render pixels to screen
-            pixel_size = max(1, int(self.zoom_level))
+            # 3. Create view buffer (Screen size)
+            view_img = Image.new('RGB', (canvas_w, canvas_h), color='#1e1e1e')
+            draw = ImageDraw.Draw(view_img)
             
-            for y in range(self.height):
-                for x in range(self.width):
-                    sx, sy = self.canvas_to_screen(x, y)
-                    
-                    # Skip if outside view
-                    if sx + pixel_size < 0 or sx > canvas_w:
-                        continue
-                    if sy + pixel_size < 0 or sy > canvas_h:
-                        continue
-                    
-                    r, g, b, a = pixels[y][x]
-                    
-                    # Draw pixel with transparency handling
-                    if a > 0:
-                        if a < 255:
-                            # Checkerboard for transparency
-                            checker = ((x + y) % 2) * 30 + 200
-                            base = (checker, checker, checker)
-                            
-                            alpha_f = a / 255.0
-                            final_r = int(r * alpha_f + base[0] * (1 - alpha_f))
-                            final_g = int(g * alpha_f + base[1] * (1 - alpha_f))
-                            final_b = int(b * alpha_f + base[2] * (1 - alpha_f))
-                            color = (final_r, final_g, final_b)
-                        else:
-                            color = (r, g, b)
-                        
-                        draw.rectangle(
-                            [sx, sy, sx + pixel_size, sy + pixel_size],
-                            fill=color
-                        )
+            # 4. View properties
+            pixel_size = self.zoom_level
+            sw = int(self.width * pixel_size)
+            sh = int(self.height * pixel_size)
+            off_x = int(canvas_w/2 + self.pan_offset[0] - sw/2)
+            off_y = int(canvas_h/2 + self.pan_offset[1] - sh/2)
             
-            # Draw grid
+            # 5. Draw Checkerboard background
+            c_size = max(4, int(pixel_size / 2))
+            for y in range(0, sh, c_size):
+                for x in range(0, sw, c_size):
+                    lx, ly = x // c_size, y // c_size
+                    c = 220 if (lx + ly) % 2 == 0 else 200
+                    draw.rectangle(
+                        [off_x + x, off_y + y, off_x + x + c_size, off_y + y + c_size],
+                        fill=(c, c, c)
+                    )
+
+            # 6. Scale and Paste Project Image
+            if sw > 0 and sh > 0:
+                scaled_project = project_img.resize((sw, sh), Image.NEAREST)
+                view_img.paste(scaled_project, (off_x, off_y), scaled_project)
+            
+            # 7. Draw Grid
             if self.show_grid and self.zoom_level >= 4:
-                for y in range(self.height + 1):
-                    sx1, sy = self.canvas_to_screen(0, y)
-                    sx2, _ = self.canvas_to_screen(self.width, y)
-                    draw.line([sx1, sy, sx2, sy], fill='#404040', width=1)
-                
-                for x in range(self.width + 1):
-                    sx, sy1 = self.canvas_to_screen(x, 0)
-                    _, sy2 = self.canvas_to_screen(x, self.height)
-                    draw.line([sx, sy1, sx, sy2], fill='#404040', width=1)
+                grid_color = '#404040'
+                for i in range(self.width + 1):
+                    gx = off_x + int(i * pixel_size)
+                    if 0 <= gx < canvas_w:
+                        draw.line([gx, off_y, gx, off_y + sh], fill=grid_color)
+                for i in range(self.height + 1):
+                    gy = off_y + int(i * pixel_size)
+                    if 0 <= gy < canvas_h:
+                        draw.line([off_x, gy, off_x + sw, gy], fill=grid_color)
             
-            # Draw selection outlines (Mint color)
+            # 8. Draw selection outlines
             for obj in self.object_manager.selected_objects:
                 if hasattr(obj, 'get_bounds'):
-                    x0, y0, x1, y1 = obj.get_bounds()
-                    sx0, sy0 = self.canvas_to_screen(x0 - 0.5, y0 - 0.5)
-                    sx1, sy1 = self.canvas_to_screen(x1 + 0.5, y1 + 0.5)
-                    
-                    # Draw mint outline
+                    bx0, by0, bx1, by1 = obj.get_bounds()
+                    sx0 = off_x + int((bx0 - 0.5) * pixel_size)
+                    sy0 = off_y + int((by0 - 0.5) * pixel_size)
+                    sx1 = off_x + int((bx1 + 0.5) * pixel_size)
+                    sy1 = off_y + int((by1 + 0.5) * pixel_size)
                     draw.rectangle([sx0, sy0, sx1, sy1], outline='#00ffff', width=2)
             
-            # Update canvas
-            self.photo_image = ImageTk.PhotoImage(img)
+            # 9. Update Graphics
+            self.photo_image = ImageTk.PhotoImage(view_img)
             self.canvas.delete("all")
             self.canvas.create_image(0, 0, image=self.photo_image, anchor=tk.NW)
             
-            # Update scrollbars
-            # Define logical range as current zoom * 2 + canvas dimensions
-            # We use a simple 0..1 range update
-            max_pan_x = max(1000, self.width * self.zoom_level)
-            max_pan_y = max(1000, self.height * self.zoom_level)
-            
-            # Update scrollbar positions (very simplified)
-            vx = 0.5 - (self.pan_offset[0] / max_pan_x)
-            vy = 0.5 - (self.pan_offset[1] / max_pan_y)
-            
+            # 10. Update Scrollbars
+            max_view_w = max(canvas_w, sw + 400)
+            max_view_h = max(canvas_h, sh + 400)
+            vx = 0.5 - (self.pan_offset[0] / max_view_w)
+            vy = 0.5 - (self.pan_offset[1] / max_view_h)
             self.h_scrollbar.set(max(0, vx-0.1), min(1, vx+0.1))
             self.v_scrollbar.set(max(0, vy-0.1), min(1, vy+0.1))
             
@@ -422,3 +404,4 @@ class VectorCanvas:
             print(f"Render error: {e}")
             import traceback
             traceback.print_exc()
+
