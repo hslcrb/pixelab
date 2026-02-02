@@ -66,6 +66,7 @@ class I18n:
                 'update_complete_restart': '업데이트 완료! 프로그램을 재시작합니다.',
                 'update_failed': '업데이트 실패: {e}',
                 'restarting': '재시작 중...',
+                'ask_permission_update': '설치 폴더에 쓰기 권한이 없습니다. 계속하시겠습니까?\n(아니오를 누르면 브라우저 창이 열립니다)',
                 
                 # File menu
                 'new': '새로 만들기',
@@ -206,6 +207,7 @@ class I18n:
                 'update_complete_restart': 'Update Complete! Restarting...',
                 'update_failed': 'Update Failed: {e}',
                 'restarting': 'Restarting...',
+                'ask_permission_update': 'No write permission in the installation folder. Proceed anyway?\n(Selecting No will open the browser)',
                 
                 # File menu
                 'new': 'New',

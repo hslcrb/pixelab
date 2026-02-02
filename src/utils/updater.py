@@ -69,26 +69,26 @@ class UpdateManager:
                 return asset.get('browser_download_url')
         return None
 
-    def start_auto_update(self, progress_callback: Callable[[int, str], None], finish_callback: Callable[[bool, str], None]):
+    def start_auto_update(self, master, progress_callback: Callable[[int, str], None], finish_callback: Callable[[bool, str], None]):
         """Start the automatic download and replacement process"""
         if not self.download_url:
             finish_callback(False, "No download URL found for this platform.")
             return
 
         def _update_thread():
+            import webbrowser
             try:
                 # 1. Create temp directory
                 temp_dir = tempfile.mkdtemp()
                 temp_file = os.path.join(temp_dir, os.path.basename(self.download_url))
                 
                 # 2. Download with progress
-                progress_callback(10, t('downloading').format(p=10))
+                progress_callback(10, f"{t('downloading').format(p=10)}")
                 
                 def _reporthook(blocknum, blocksize, totalsize):
                     readsofar = blocknum * blocksize
                     if totalsize > 0:
                         percent = int(readsofar * 100 / totalsize)
-                        # Scale to 10-90%
                         scaled_percent = 10 + int(percent * 0.8)
                         progress_callback(scaled_percent, t('downloading').format(p=percent))
                 
@@ -97,37 +97,54 @@ class UpdateManager:
                 # 3. Apply Update
                 progress_callback(95, t('applying_update'))
                 
-                # Get current executable path
+                # Get paths
                 if getattr(sys, 'frozen', False):
-                    # Running as bundled binary (PyInstaller)
                     current_exe = sys.executable
                 else:
-                    # Running as script
                     current_exe = os.path.abspath(sys.argv[0])
 
-                # Atomic replacement (as much as possible)
+                # Check Permissions
+                if not os.access(current_exe, os.W_OK) or not os.access(os.path.dirname(current_exe), os.W_OK):
+                    # Ask in main thread
+                    from tkinter import messagebox
+                    perm_event = threading.Event()
+                    perm_result = [False]
+                    
+                    def _ask():
+                        perm_result[0] = messagebox.askyesno(t('warning'), t('ask_permission_update'))
+                        perm_event.set()
+                    
+                    master.after(0, _ask)
+                    perm_event.wait()
+                    
+                    if not perm_result[0]:
+                        webbrowser.open(self.update_url)
+                        finish_callback(False, "User redirected to browser.")
+                        return
+
+                # Atomic replacement
                 if os.name == 'nt': # Windows
                     old_exe = current_exe + ".old"
-                    if os.path.exists(old_exe):
-                        os.remove(old_exe)
+                    if os.path.exists(old_exe): os.remove(old_exe)
                     os.rename(current_exe, old_exe)
                     shutil.move(temp_file, current_exe)
                 else: # Linux/macOS
                     shutil.move(temp_file, current_exe)
-                    os.chmod(current_exe, 0o755) # Ensure executable
+                    os.chmod(current_exe, 0o755)
                 
                 progress_callback(100, t('restarting'))
                 finish_callback(True, t('update_complete_restart'))
                 
-                # 4. Restart Application
-                self._restart_app(current_exe)
+                # Restart
+                master.after(1000, lambda: self._restart_app(current_exe))
                 
             except Exception as e:
                 import traceback
                 traceback.print_exc()
+                # Fail-safe: open browser
+                webbrowser.open(self.update_url)
                 finish_callback(False, t('update_failed').format(e=str(e)))
             finally:
-                # Cleanup
                 try: shutil.rmtree(temp_dir)
                 except: pass
 

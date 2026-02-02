@@ -104,7 +104,7 @@ class ToastNotification(tk.Toplevel):
                     progress.close()
             self.parent.after(0, _ui_finish)
 
-        self.updater.start_auto_update(on_progress, on_finish)
+        self.updater.start_auto_update(self.parent, on_progress, on_finish)
 
 def show_update_toast(parent, updater, version):
     """Helper to ensure thread-safe UI call"""
