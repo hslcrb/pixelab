@@ -21,6 +21,11 @@ class VectorObject(ABC):
         pass
     
     @abstractmethod
+    def draw_to_image(self, draw: 'ImageDraw.Draw'):
+        """Directly draw to a PIL ImageDraw object for maximum performance"""
+        pass
+    
+    @abstractmethod
     def rasterize(self, width, height) -> List[Tuple[int, int, Tuple[int, int, int, int]]]:
         """
         Rasterize to pixels with anti-aliasing
@@ -58,6 +63,9 @@ class VectorPixel(VectorObject):
         self.x = x
         self.y = y
     
+    def draw_to_image(self, draw: 'ImageDraw.Draw'):
+        draw.point((self.x, self.y), fill=self.color)
+    
     def get_bounds(self):
         return (self.x, self.y, self.x, self.y)
     
@@ -94,6 +102,9 @@ class VectorLine(VectorObject):
         self.x0, self.y0 = x0, y0
         self.x1, self.y1 = x1, y1
         self.thickness = thickness
+    
+    def draw_to_image(self, draw: 'ImageDraw.Draw'):
+        draw.line([(self.x0, self.y0), (self.x1, self.y1)], fill=self.color, width=self.thickness)
     
     def get_bounds(self):
         return (
@@ -191,6 +202,12 @@ class VectorRectangle(VectorObject):
         self.y1 = max(y0, y1)
         self.filled = filled
     
+    def draw_to_image(self, draw: 'ImageDraw.Draw'):
+        if self.filled:
+            draw.rectangle([self.x0, self.y0, self.x1, self.y1], fill=self.color)
+        else:
+            draw.rectangle([self.x0, self.y0, self.x1, self.y1], outline=self.color)
+    
     def get_bounds(self):
         return (self.x0, self.y0, self.x1, self.y1)
     
@@ -259,6 +276,14 @@ class VectorCircle(VectorObject):
         self.cy = cy
         self.radius = radius
         self.filled = filled
+    
+    def draw_to_image(self, draw: 'ImageDraw.Draw'):
+        x0, y0 = self.cx - self.radius, self.cy - self.radius
+        x1, y1 = self.cx + self.radius, self.cy + self.radius
+        if self.filled:
+            draw.ellipse([x0, y0, x1, y1], fill=self.color)
+        else:
+            draw.ellipse([x0, y0, x1, y1], outline=self.color)
     
     def get_bounds(self):
         return (
@@ -340,76 +365,55 @@ class VectorCircle(VectorObject):
 class VectorPath(VectorObject):
     """Vector path for freeform curves (Bezier, etc.)"""
     
-    def __init__(self, points, color=(0, 0, 0, 255), closed=False):
+    def __init__(self, points, color=(0, 0, 0, 255), thickness=1, closed=False):
         super().__init__(color)
         self.points = points  # List of (x, y) tuples
+        self.thickness = thickness
         self.closed = closed
+    
+    def draw_to_image(self, draw: 'ImageDraw.Draw'):
+        if len(self.points) < 1: return
+        if len(self.points) == 1:
+            # Single point behavior
+            r = self.thickness / 2
+            x, y = self.points[0]
+            draw.ellipse([x-r, y-r, x+r, y+r], fill=self.color)
+            return
+
+        draw.line(self.points, fill=self.color, width=self.thickness, joint="curve")
+        if self.closed:
+            draw.line([self.points[-1], self.points[0]], fill=self.color, width=self.thickness)
     
     def get_bounds(self):
         if not self.points:
             return (0, 0, 0, 0)
         xs = [p[0] for p in self.points]
         ys = [p[1] for p in self.points]
-        return (min(xs), min(ys), max(xs), max(ys))
+        r = self.thickness / 2
+        return (min(xs) - r, min(ys) - r, max(xs) + r, max(ys) + r)
     
     def rasterize(self, width, height):
-        pixels = []
-        
-        if len(self.points) < 2:
-            return pixels
-        
-        # Draw lines between consecutive points
-        for i in range(len(self.points) - 1):
-            x0, y0 = self.points[i]
-            x1, y1 = self.points[i + 1]
-            
-            # Bresenham line
-            dx = abs(x1 - x0)
-            dy = abs(y1 - y0)
-            sx = 1 if x0 < x1 else -1
-            sy = 1 if y0 < y1 else -1
-            err = dx - dy
-            
-            x, y = x0, y0
-            
-            while True:
-                if 0 <= x < width and 0 <= y < height:
-                    pixels.append((x, y, self.color))
-                
-                if x == x1 and y == y1:
-                    break
-                
-                e2 = 2 * err
-                if e2 > -dy:
-                    err -= dy
-                    x += sx
-                if e2 < dx:
-                    err += dx
-                    y += sy
-        
-        # Close path if needed
-        if self.closed and len(self.points) >= 2:
-            x0, y0 = self.points[-1]
-            x1, y1 = self.points[0]
-            # Draw closing line (implementation omitted for brevity, same as above)
-        
-        return pixels
+        # We don't really use this anymore since draw_to_image is the primary path
+        return []
     
     def contains_point(self, x, y):
         # Check if point is near any segment of the path
+        # Factor in thickness
+        r_sq = max(4, (self.thickness/2 + 2)**2)
         for i in range(len(self.points) - 1):
             x0, y0 = self.points[i]
             x1, y1 = self.points[i + 1]
             
             length_sq = (x1 - x0)**2 + (y1 - y0)**2
             if length_sq == 0:
+                if (x-x0)**2 + (y-y0)**2 <= r_sq: return True
                 continue
             
             t = max(0, min(1, ((x - x0) * (x1 - x0) + (y - y0) * (y1 - y0)) / length_sq))
             px = x0 + t * (x1 - x0)
             py = y0 + t * (y1 - y0)
             
-            if (x - px)**2 + (y - py)**2 <= 4:
+            if (x - px)**2 + (y - py)**2 <= r_sq:
                 return True
         
         return False
@@ -422,6 +426,7 @@ class VectorPath(VectorObject):
             'type': 'path',
             'points': self.points,
             'color': list(self.color),
+            'thickness': self.thickness,
             'closed': self.closed
         }
     
@@ -430,6 +435,7 @@ class VectorPath(VectorObject):
         return VectorPath(
             [tuple(p) for p in data['points']],
             tuple(data['color']),
+            data.get('thickness', 1),
             data.get('closed', False)
         )
 
@@ -450,6 +456,10 @@ class VectorGroup(VectorObject):
         """Remove object from group"""
         if obj in self.objects:
             self.objects.remove(obj)
+    
+    def draw_to_image(self, draw: 'ImageDraw.Draw'):
+        for obj in self.objects:
+            obj.draw_to_image(draw)
     
     def get_bounds(self):
         """Get bounding box of all objects in group"""

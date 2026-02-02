@@ -13,6 +13,11 @@ class Layer:
         self.objects: List[VectorObject] = []
         self.visible = True
         self.locked = False
+        self.dirty = True
+        self.cached_image = None
+
+    def mark_dirty(self):
+        self.dirty = True
 
     def to_dict(self):
         return {
@@ -31,6 +36,7 @@ class Layer:
             obj = create_object_from_dict(obj_data)
             if obj:
                 layer.objects.append(obj)
+        layer.dirty = True
         return layer
 
 
@@ -103,6 +109,7 @@ class ObjectManager:
         """Add a vector object to current layer"""
         if not self.current_layer.locked:
             self.current_layer.objects.append(obj)
+            self.current_layer.mark_dirty()
             from src.i18n import t
             self.add_log(t('added_obj').format(type=type(obj).__name__))
     
@@ -111,6 +118,7 @@ class ObjectManager:
         for layer in self.layers:
             if not layer.locked and obj in layer.objects:
                 layer.objects.remove(obj)
+                layer.mark_dirty()
                 break
         if obj in self.selected_objects:
             self.selected_objects.remove(obj)
@@ -159,6 +167,7 @@ class ObjectManager:
             for layer in self.layers:
                 if not layer.locked and obj in layer.objects:
                     layer.objects.remove(obj)
+                    layer.mark_dirty()
                     break
         self.selected_objects.clear()
         if deleted_count > 0:
@@ -171,8 +180,11 @@ class ObjectManager:
             # Only move if its layer is not locked
             is_locked = False
             for layer in self.layers:
-                if obj in layer.objects and layer.locked:
-                    is_locked = True
+                if obj in layer.objects:
+                    if layer.locked:
+                        is_locked = True
+                    else:
+                        layer.mark_dirty()
                     break
             if not is_locked:
                 obj.translate(dx, dy)
@@ -193,10 +205,12 @@ class ObjectManager:
             for layer in self.layers:
                 if obj in layer.objects:
                     layer.objects.remove(obj)
+                    layer.mark_dirty()
                     break
         
         # Add group to CURRENT layer
         self.current_layer.objects.append(group)
+        self.current_layer.mark_dirty()
         
         # Select group
         self.selected_objects.clear()
@@ -224,6 +238,7 @@ class ObjectManager:
                 
                 if target_layer and not target_layer.locked:
                     target_layer.objects.remove(obj)
+                    target_layer.mark_dirty()
                     ungrouped = obj.ungroup()
                     target_layer.objects.extend(ungrouped)
                     new_objects.extend(ungrouped)
@@ -243,17 +258,25 @@ class ObjectManager:
     def change_selected_color(self, new_color):
         """Change color of selected objects and groups"""
         count = 0
+        modified_layers = set()
         for obj in self.selected_objects:
-            from .vector_objects import VectorGroup
-            if isinstance(obj, VectorGroup):
-                for sub_obj in obj.objects:
-                    if hasattr(sub_obj, 'color'):
-                        sub_obj.color = new_color
-                        count += 1
-            elif hasattr(obj, 'color'):
-                obj.color = new_color
-                count += 1
+            # Find layer
+            layer = self.find_layer_of_object(obj)
+            if layer and not layer.locked:
+                modified_layers.add(layer)
+                from .vector_objects import VectorGroup
+                if isinstance(obj, VectorGroup):
+                    for sub_obj in obj.objects:
+                        if hasattr(sub_obj, 'color'):
+                            sub_obj.color = new_color
+                            count += 1
+                elif hasattr(obj, 'color'):
+                    obj.color = new_color
+                    count += 1
         
+        for layer in modified_layers:
+            layer.mark_dirty()
+            
         if count > 0:
             from src.i18n import t
             self.add_log(t('changed_color_objs').format(count=count))
@@ -272,6 +295,7 @@ class ObjectManager:
                 if i < len(layer.objects) - 1:
                     layer.objects[i], layer.objects[i+1] = layer.objects[i+1], layer.objects[i]
                     modified = True
+                    layer.mark_dirty()
         
         if modified:
             from src.i18n import t
@@ -290,6 +314,7 @@ class ObjectManager:
                 if i > 0:
                     layer.objects[i], layer.objects[i-1] = layer.objects[i-1], layer.objects[i]
                     modified = True
+                    layer.mark_dirty()
         
         if modified:
             from src.i18n import t
@@ -310,6 +335,7 @@ class ObjectManager:
                 layer.objects.remove(obj)
             layer.objects.extend(selected_in_layer)
             modified = True
+            layer.mark_dirty()
             
         if modified:
             from src.i18n import t
@@ -330,6 +356,7 @@ class ObjectManager:
                 layer.objects.remove(obj)
                 layer.objects.insert(0, obj)
             modified = True
+            layer.mark_dirty()
             
         if modified:
             from src.i18n import t
@@ -338,40 +365,37 @@ class ObjectManager:
 
     def rasterize(self, width, height) -> 'Image.Image':
         """
-        Rasterize all visible layers to a PIL Image
+        Extreme Optimized Rasterization
+        - Uses layer caching (only re-renders modified layers)
+        - Uses PIL's native alpha_composite for fast blending
         """
-        from PIL import Image, ImageDraw
+        from PIL import Image
         
-        # Create base image with transparency
-        img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
+        # Create base composition image
+        comp_img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
         
         for layer in self.layers:
             if not layer.visible:
                 continue
             
-            for obj in layer.objects:
-                # Get pixels from object
-                obj_pixels = obj.rasterize(width, height)
+            # Check if layer needs re-rendering
+            if layer.dirty or layer.cached_image is None or layer.cached_image.size != (width, height):
+                # Create layer image
+                layer_img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
                 
-                # Draw pixels to image
-                # This is faster than manual blending in Python loop
-                for x, y, color in obj_pixels:
-                    if 0 <= x < width and 0 <= y < height:
-                        r, g, b, a = color
-                        # Blend with current pixel if transparency < 255
-                        if a == 255:
-                            img.putpixel((x, y), (r, g, b, 255))
-                        elif a > 0:
-                            # Simple alpha compositing
-                            bg_r, bg_g, bg_b, bg_a = img.getpixel((x, y))
-                            alpha = a / 255.0
-                            nr = int(r * alpha + bg_r * (1 - alpha))
-                            ng = int(g * alpha + bg_g * (1 - alpha))
-                            nb = int(b * alpha + bg_b * (1 - alpha))
-                            na = min(255, a + bg_a)
-                            img.putpixel((x, y), (nr, ng, nb, na))
+                # Render objects in this layer
+                from PIL import ImageDraw
+                draw = ImageDraw.Draw(layer_img)
+                for obj in layer.objects:
+                    obj.draw_to_image(draw)
+                
+                layer.cached_image = layer_img
+                layer.dirty = False
+            
+            # Composite layer using PIL's fast C-implemented alpha_composite
+            comp_img = Image.alpha_composite(comp_img, layer.cached_image)
         
-        return img
+        return comp_img
 
     def to_dict(self) -> dict:
         """Serialize to dictionary including layers and palette"""

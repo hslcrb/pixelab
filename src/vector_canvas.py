@@ -162,8 +162,19 @@ class VectorCanvas:
         self.canvas.config(cursor=self.current_tool.get_cursor() if self.current_tool else "crosshair")
 
     def force_render(self):
-        """Force a render regardless of need_render flag"""
+        """Request a render as soon as the UI is idle"""
         self.need_render = True
+        if not hasattr(self, '_render_queued'):
+            self._render_queued = False
+        
+        if not self._render_queued:
+            self._render_queued = True
+            # Use after_idle to debounce multiple render requests during a single event loop
+            self.canvas.after_idle(self._execute_render)
+    
+    def _execute_render(self):
+        """Internal method to execute the queued render"""
+        self._render_queued = False
         self.render()
     
     def _on_resize(self, event):
@@ -331,10 +342,8 @@ class VectorCanvas:
             
             # 2. Add preview object if exists
             if self.preview_object:
-                preview_pixels = self.preview_object.rasterize(self.width, self.height)
-                for x, y, color in preview_pixels:
-                    if 0 <= y < self.height and 0 <= x < self.width:
-                        project_img.putpixel((x, y), color)
+                draw_p = ImageDraw.Draw(project_img)
+                self.preview_object.draw_to_image(draw_p)
             
             # 3. Create view buffer (Screen size)
             view_img = Image.new('RGB', (canvas_w, canvas_h), color='#1e1e1e')
@@ -347,16 +356,21 @@ class VectorCanvas:
             off_x = int(canvas_w/2 + self.pan_offset[0] - sw/2)
             off_y = int(canvas_h/2 + self.pan_offset[1] - sh/2)
             
-            # 5. Draw Checkerboard background
+            # 5. Draw Checkerboard background efficiently
             c_size = max(4, int(pixel_size / 2))
-            for y in range(0, sh, c_size):
-                for x in range(0, sw, c_size):
-                    lx, ly = x // c_size, y // c_size
-                    c = 220 if (lx + ly) % 2 == 0 else 200
-                    draw.rectangle(
-                        [off_x + x, off_y + y, off_x + x + c_size, off_y + y + c_size],
-                        fill=(c, c, c)
-                    )
+            if sw > 0 and sh > 0:
+                # Create a 2x2 pattern and tile it
+                pattern = Image.new('RGB', (c_size*2, c_size*2), (200, 200, 200))
+                p_draw = ImageDraw.Draw(pattern)
+                p_draw.rectangle([0, 0, c_size-1, c_size-1], fill=(220, 220, 220))
+                p_draw.rectangle([c_size, c_size, c_size*2-1, c_size*2-1], fill=(220, 220, 220))
+                
+                # Create a tiled background by tiling the pattern
+                # PIL doesn't have a direct tile method, so we manually paste in a loop
+                # but with much larger chunks (c_size*2)
+                for y in range(0, sh, c_size*2):
+                    for x in range(0, sw, c_size*2):
+                        view_img.paste(pattern, (off_x + x, off_y + y))
 
             # 6. Scale and Paste Project Image
             if sw > 0 and sh > 0:

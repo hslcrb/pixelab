@@ -74,35 +74,33 @@ class VectorPencilTool(VectorTool):
 
 
 class VectorBrushTool(VectorTool):
-    """Creates multiple VectorPixel objects or filled areas"""
+    """Creates a single VectorPath for each brush stroke (High Performance)"""
     
     def __init__(self, color=(0, 0, 0, 255), size=3):
         super().__init__(color)
         self.size = size
-        self.drawn_pixels = set()
+        self.current_stroke = None
     
     def set_size(self, size):
-        self.size = max(1, min(10, size))
+        self.size = max(1, min(100, size))
     
     def on_press(self, x, y, object_manager):
-        self.drawn_pixels.clear()
-        self._draw_brush(x, y, object_manager)
+        # Start new path with thickness
+        self.current_stroke = VectorPath([(x, y)], self.color, thickness=self.size)
+        self.preview_object = self.current_stroke
     
     def on_drag(self, x, y, object_manager):
-        self._draw_brush(x, y, object_manager)
+        if self.current_stroke:
+            # Add point to current stroke
+            if (x, y) != self.current_stroke.points[-1]:
+                self.current_stroke.points.append((x, y))
     
     def on_release(self, x, y, object_manager):
-        self.drawn_pixels.clear()
-    
-    def _draw_brush(self, cx, cy, object_manager):
-        radius = self.size // 2
-        for dy in range(-radius, radius + 1):
-            for dx in range(-radius, radius + 1):
-                if dx*dx + dy*dy <= radius*radius:
-                    px, py = cx + dx, cy + dy
-                    if (px, py) not in self.drawn_pixels:
-                        object_manager.add_object(VectorPixel(px, py, self.color))
-                        self.drawn_pixels.add((px, py))
+        if self.current_stroke:
+            # Add the entire stroke as one object
+            object_manager.add_object(self.current_stroke)
+            self.current_stroke = None
+            self.preview_object = None
 
 
 class VectorEraserTool(VectorTool):
