@@ -103,6 +103,15 @@ class UpdateManager:
                 else:
                     current_exe = os.path.abspath(sys.argv[0])
 
+                # CRITICAL: Prevent overwriting .py script with binary
+                if not getattr(sys, 'frozen', False) and current_exe.endswith('.py'):
+                    # Binary assets (no extension or .exe) should not replace .py
+                    asset_name = os.path.basename(self.download_url).lower()
+                    if not asset_name.endswith('.py'):
+                        webbrowser.open(self.update_url)
+                        finish_callback(False, t('source_update_error'))
+                        return
+
                 # Check Permissions
                 if not os.access(current_exe, os.W_OK) or not os.access(os.path.dirname(current_exe), os.W_OK):
                     # Ask in main thread
