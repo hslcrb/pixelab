@@ -68,6 +68,7 @@ class I18n:
                 'restarting': '재시작 중...',
                 'ask_permission_update': '설치 폴더에 쓰기 권한이 없습니다. 계속하시겠습니까?\n(아니오를 누르면 브라우저 창이 열립니다)',
                 'source_update_error': '소스 코드 버전은 자동 업데이트가 불가능합니다. git pull 명령어를 사용하거나 최신 바이너리를 별도로 다운로드해 주세요.',
+                'docker_update_info': '도커 환경에서 실행 중입니다. 업데이트를 위해 최신 이미지를 다시 받아주세요 (docker pull).',
                 
                 # File menu
                 'new': '새로 만들기',
@@ -210,6 +211,7 @@ class I18n:
                 'restarting': 'Restarting...',
                 'ask_permission_update': 'No write permission in the installation folder. Proceed anyway?\n(Selecting No will open the browser)',
                 'source_update_error': 'Source code version cannot be auto-updated. Please use git pull or download the binary separately.',
+                'docker_update_info': 'Running in Docker. Please pull the latest image to update (docker pull).',
                 
                 # File menu
                 'new': 'New',

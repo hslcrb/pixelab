@@ -69,14 +69,37 @@ class UpdateManager:
                 return asset.get('browser_download_url')
         return None
 
+    def _is_docker(self) -> bool:
+        """Detect if running inside a Docker container"""
+        path = '/.dockerenv'
+        if os.path.exists(path):
+            return True
+        
+        # Check cgroup
+        try:
+            with open('/proc/self/cgroup', 'rt') as f:
+                if 'docker' in f.read():
+                    return True
+        except:
+            pass
+            
+        return False
+
     def start_auto_update(self, master, progress_callback: Callable[[int, str], None], finish_callback: Callable[[bool, str], None]):
         """Start the automatic download and replacement process"""
+        import webbrowser
+        
+        # Docker Check (Must be first)
+        if self._is_docker():
+            webbrowser.open(self.update_url)
+            finish_callback(False, t('docker_update_info'))
+            return
+
         if not self.download_url:
             finish_callback(False, "No download URL found for this platform.")
             return
 
         def _update_thread():
-            import webbrowser
             try:
                 # 1. Create temp directory
                 temp_dir = tempfile.mkdtemp()
