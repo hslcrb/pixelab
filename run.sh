@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# PixeLab v2.1 실행 스크립트
+# PixeLab 실행 스크립트
 # 가상환경 자동 체크 및 실행
 
 set -e  # 에러 발생 시 중단
@@ -13,7 +13,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     PixeLab v2.1 - Vector Edition         ║${NC}"
+echo -e "${BLUE}║     PixeLab - Vector Edition              ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -74,7 +74,7 @@ fi
 # 애플리케이션 실행
 echo ""
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║          🚀 PixeLab v2.1 시작!             ║${NC}"
+echo -e "${BLUE}║          🚀 PixeLab 시작!                 ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${GREEN}단축키:${NC}"

@@ -23,15 +23,28 @@ except ImportError as e:
     sys.exit(1)
 
 
-# Global Constants
-VERSION = "2.1"
+# Versioning Strategy: 0.0.(Commits // 10)
+def get_version():
+    import subprocess
+    base_commit_count = 24 # Baseline for v0.0.0
+    try:
+        # Get current commit count
+        count_str = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()
+        count = int(count_str)
+        patch = (count - base_commit_count) // 10
+        return f"0.0.{max(0, patch)}"
+    except Exception:
+        # Fallback if git is not available (e.g. in Docker or released)
+        return "0.0.0"
+
+VERSION = get_version()
 
 class PixelLabFullApp:
     """Main Application Class"""
     
     def __init__(self, root):
         self.root = root
-        self.root.title("PixeLab v2.1 - Vector-Pixel Editor")
+        self.root.title(f"PixeLab v{VERSION} - Vector-Pixel Editor")
         self.root.geometry("1200x800")
         self.root.configure(bg="#1e1e1e")
         
@@ -62,9 +75,6 @@ class PixelLabFullApp:
         
         # Status
         self._update_status()
-        
-        print("PixeLab v2.1 - Full UI Version")
-        print("단축키: F1(한/영) V(선택) P(연필) Ctrl+I(가져오기) Ctrl+G(그룹)")
     
     def _setup_ui(self):
         """Setup UI components"""
@@ -811,7 +821,7 @@ class PixelLabFullApp:
     
     def _update_title(self):
         """Update window title"""
-        title = "PixeLab v2.1"
+        title = f"PixeLab v{VERSION}"
         if self.current_file:
             title += f" - {self.current_file}"
         if self.modified:
@@ -821,6 +831,20 @@ class PixelLabFullApp:
 
 def main():
     root = tk.Tk()
+    root.title(f"PixeLab v{VERSION}")
+    
+    # Set window size and center it
+    width, height = 1280, 800
+    sw = root.winfo_screenwidth()
+    sh = root.winfo_screenheight()
+    x = (sw - width) // 2
+    y = (sh - height) // 2
+    root.geometry(f"{width}x{height}+{x}+{y}")
+    
+    # Console banner
+    print(f"PixeLab v{VERSION} - Full UI Version")
+    print("단축키: F1(한/영) V(선택) P(연필) Ctrl+I(가져오기) Ctrl+G(그룹)")
+    
     app = PixelLabFullApp(root)
     root.mainloop()
 
