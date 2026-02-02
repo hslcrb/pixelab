@@ -47,9 +47,11 @@ class ColorPicker(tk.Frame):
             height=30,
             bg="#000000",
             highlightthickness=1,
-            highlightbackground="#ffffff"
+            highlightbackground="#ffffff",
+            cursor="hand2"
         )
         self.current_color_canvas.pack(side=tk.LEFT, padx=(10, 0))
+        self.current_color_canvas.bind("<Button-1>", lambda e: self._pick_color())
         
         # Color picker button
         self.btn_pick = tk.Button(
@@ -89,14 +91,6 @@ class ColorPicker(tk.Frame):
         separator = tk.Frame(self, bg="#444444", height=2)
         separator.pack(fill=tk.X, pady=10, padx=10)
 
-    def refresh_texts(self):
-        """Update texts for current language"""
-        from src.i18n import t
-        self.title_label.config(text=t('colors_label'))
-        self.current_color_label.config(text=t('current_color'))
-        self.btn_pick.config(text=t('choose_color'))
-        self.btn_add.config(text=t('add_to_palette'))
-        
         # Scrollable palette
         palette_container = tk.Frame(self, bg="#2b2b2b")
         palette_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
@@ -131,6 +125,14 @@ class ColorPicker(tk.Frame):
         
         # Set initial color
         self.set_color((0, 0, 0, 255))
+
+    def refresh_texts(self):
+        """Update texts for current language"""
+        from src.i18n import t
+        self.title_label.config(text=t('colors_label'))
+        self.current_color_label.config(text=t('current_color'))
+        self.btn_pick.config(text=t('choose_color'))
+        self.btn_add.config(text=t('add_to_palette'))
     
     def _pick_color(self):
         """Open color picker dialog"""

@@ -64,11 +64,7 @@ class PixelLabFullApp:
         self.toolbar = Toolbar(main_container, self)
         self.toolbar.pack(side=tk.LEFT, fill=tk.Y)
         
-        # Right panel - Color picker
-        self.color_picker = ColorPicker(main_container, self.palette, self._on_color_change)
-        self.color_picker.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Center - Canvas
+        # Center - Canvas frame
         canvas_frame = tk.Frame(main_container, bg="#2b2b2b")
         canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
@@ -88,8 +84,13 @@ class PixelLabFullApp:
         zoom_in_btn = tk.Button(zoom_frame, text="+", command=self._zoom_in, bg="#3c3c3c", fg="white")
         zoom_in_btn.pack(side=tk.LEFT, padx=2)
         
-        # Canvas
+        # Canvas Widget
         self.canvas_widget = VectorCanvas(canvas_frame, width=32, height=32, on_change=self._on_canvas_change)
+        
+        # Right panel - Color picker
+        # (MUST be created after canvas_widget because set_color calls _on_color_change)
+        self.color_picker = ColorPicker(main_container, self.palette, self._on_color_change)
+        self.color_picker.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Status bar
         status_frame = tk.Frame(self.root, bg="#2b2b2b", height=25)
