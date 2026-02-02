@@ -350,12 +350,14 @@ class PixelLabFullApp:
     def _zoom_in(self):
         """Zoom in"""
         self.canvas_widget.zoom_level = min(100, self.canvas_widget.zoom_level * 1.2)
+        self.canvas_widget.need_render = True
         self.canvas_widget.render()
         self.zoom_label.config(text=f"{int(self.canvas_widget.zoom_level)}x")
     
     def _zoom_out(self):
         """Zoom out"""
         self.canvas_widget.zoom_level = max(0.5, self.canvas_widget.zoom_level / 1.2)
+        self.canvas_widget.need_render = True
         self.canvas_widget.render()
         self.zoom_label.config(text=f"{int(self.canvas_widget.zoom_level)}x")
     

@@ -188,12 +188,17 @@ class ColorPicker(tk.Frame):
                 bg=hex_color,
                 width=3,
                 height=1,
-                relief=tk.RAISED,
-                borderwidth=2,
+                relief=tk.FLAT,
+                borderwidth=1,
+                highlightthickness=0,
+                activebackground=hex_color, # Prevent white hover
                 cursor="hand2",
-                activebackground=hex_color,
                 command=lambda c=color: self.set_color(c)
             )
+            # Extra protection against some themes turning it white on hover
+            btn.bind("<Enter>", lambda e, c=hex_color: e.widget.config(bg=c))
+            btn.bind("<Leave>", lambda e, c=hex_color: e.widget.config(bg=c))
+            
             btn.grid(row=row, column=col, padx=2, pady=2, sticky="nsew")
             
             # Right-click to remove
