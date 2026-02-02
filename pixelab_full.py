@@ -187,6 +187,7 @@ class PixelLabFullApp:
         view_menu.add_command(label=t('toggle_grid'), command=self.toggle_grid, accelerator="G")
         view_menu.add_command(label=t('zoom_in'), command=self._zoom_in, accelerator="+")
         view_menu.add_command(label=t('zoom_out'), command=self._zoom_out, accelerator="-")
+        view_menu.add_command(label=t('activity_logs'), command=self.show_logs)
         view_menu.add_separator()
         view_menu.add_command(label="한/영 전환", command=self.toggle_language, accelerator="F1")
         
@@ -331,45 +332,81 @@ class PixelLabFullApp:
         if 0 <= px < self.canvas_widget.width and 0 <= py < self.canvas_widget.height:
             self.pos_label.config(text=f"{t('position')}: ({px}, {py})")
     
+    def _dismiss_context_menu(self, event=None):
+        """Dismiss active context menu"""
+        if hasattr(self, 'context_menu'):
+            try:
+                self.context_menu.destroy()
+                del self.context_menu
+            except:
+                pass
+        
+        # Unbind global dismissal if exists
+        try:
+            if hasattr(self, '_dismiss_id'):
+                self.root.unbind("<Button-1>", self._dismiss_id)
+                del self._dismiss_id
+        except:
+            pass
+
     def _on_right_click(self, event):
         """Right-click context menu"""
+        self._dismiss_context_menu()
+                
+        px, py = self.canvas_widget.screen_to_canvas(event.x, event.y)
+        obj_under_cursor = self.canvas_widget.object_manager.get_object_at(px, py)
+        
+        # If right clicking on an unselected object, select it first
+        if obj_under_cursor and obj_under_cursor not in self.canvas_widget.object_manager.selected_objects:
+            self.canvas_widget.object_manager.deselect_all()
+            self.canvas_widget.object_manager.select_object(obj_under_cursor)
+            self.canvas_widget.force_render()
+            
         sel_count = len(self.canvas_widget.object_manager.selected_objects)
         
-        print(f"[DEBUG] Right-click: {sel_count} objects selected")
-        
         if sel_count == 0:
-            print("[DEBUG] No objects selected, showing no menu")
             return
         
-        context_menu = Menu(self.root, tearoff=0)
+        self.context_menu = Menu(self.root, tearoff=0)
         
+        # Show Layer Info if exactly one object is selected (or the one under cursor)
+        if sel_count == 1:
+            obj = self.canvas_widget.object_manager.selected_objects[0]
+            layer = self.canvas_widget.object_manager.find_layer_of_object(obj)
+            if layer:
+                layer_label = f"Layer: {layer.name}" if get_language() == 'en' else f"레이어: {layer.name}"
+                self.context_menu.add_command(label=layer_label, state="disabled")
+                self.context_menu.add_separator()
+
         # Change Color
-        context_menu.add_command(
+        self.context_menu.add_command(
             label=f"{t('change_color')}... ({sel_count})",
             command=self.change_selected_color
         )
         
-        context_menu.add_separator()
+        self.context_menu.add_separator()
         
         # Group/Ungroup
         if sel_count >= 2:
-            context_menu.add_command(label=t('group'), command=self.group_objects)
+            self.context_menu.add_command(label=t('group'), command=self.group_objects)
         
         from src.vector_objects import VectorGroup
         has_groups = any(isinstance(obj, VectorGroup) for obj in self.canvas_widget.object_manager.selected_objects)
         if has_groups:
-            context_menu.add_command(label=t('ungroup'), command=self.ungroup_objects)
+            self.context_menu.add_command(label=t('ungroup'), command=self.ungroup_objects)
         
-        context_menu.add_separator()
-        context_menu.add_command(
+        self.context_menu.add_separator()
+        self.context_menu.add_command(
             label=t('delete'),
             command=self.delete_selected
         )
         
-        try:
-            context_menu.tk_popup(event.x_root, event.y_root)
-        finally:
-            context_menu.grab_release()
+        self.context_menu.post(event.x_root, event.y_root)
+        
+        # Bind left click on root/canvas to dismiss menu
+        # This ensures clicking anywhere (empty space or UI) closes the menu
+        self._dismiss_id = self.root.bind("<Button-1>", self._dismiss_context_menu, add="+")
+        self.canvas_widget.canvas.bind("<Button-1>", self._dismiss_context_menu, add="+")
     
     def _zoom_in(self):
         """Zoom in"""
@@ -424,6 +461,24 @@ class PixelLabFullApp:
         """Show about dialog"""
         messagebox.showinfo(t('about'), "PixeLab v2.1\nVector-Pixel Hybrid Editor\nCreated by rheehose")
     
+    def show_logs(self):
+        """Show activity logs"""
+        log_win = tk.Toplevel(self.root)
+        log_win.title(t('activity_logs'))
+        log_win.geometry("500x400")
+        log_win.configure(bg="#2b2b2b")
+        
+        from tkinter import scrolledtext
+        txt = scrolledtext.ScrolledText(log_win, bg="#1e1e1e", fg="#ffffff", font=("Courier", 9))
+        txt.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        for entry in self.canvas_widget.object_manager.logs:
+            time_str = entry['time'].split('T')[1].split('.')[0] # HH:MM:SS
+            txt.insert(tk.END, f"[{time_str}] {entry['message']}\n")
+        
+        txt.config(state=tk.DISABLED)
+        tk.Button(log_win, text="OK", command=log_win.destroy).pack(pady=5)
+
     def toggle_grid(self):
         """Toggle grid"""
         self.canvas_widget.toggle_grid()

@@ -20,16 +20,18 @@ class FileHandler:
         mgr_data = canvas.object_manager.to_dict()
         
         data = {
-            "version": "2.0",
+            "version": "2.1",
             "width": canvas.width,
             "height": canvas.height,
             "layers": mgr_data['layers'],
             "current_layer_index": mgr_data['current_layer_index'],
             "palette": mgr_data['palette'],
+            "logs": mgr_data.get('logs', []),
             "metadata": {
                 "created": datetime.now().isoformat(),
                 "modified": datetime.now().isoformat(),
-                "author": "PixeLab User"
+                "author": "PixeLab User",
+                "software": "PixeLab v2.1"
             }
         }
         

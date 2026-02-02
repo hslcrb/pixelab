@@ -42,7 +42,18 @@ class ObjectManager:
         self.current_layer_index = 0
         self.selected_objects: List[VectorObject] = []
         self.palette_colors = [] # Store palette in manager for saving
+        self.logs = [] # Activity logs
+        self.add_log("Project initialized")
     
+    def add_log(self, message):
+        """Add a timestamped log entry"""
+        from datetime import datetime
+        timestamp = datetime.now().isoformat()
+        self.logs.append({"time": timestamp, "message": message})
+        # Keep only last 100 logs to avoid file bloat
+        if len(self.logs) > 100:
+            self.logs.pop(0)
+
     @property
     def current_layer(self) -> Layer:
         return self.layers[self.current_layer_index]
@@ -61,10 +72,12 @@ class ObjectManager:
         new_layer = Layer(name)
         self.layers.append(new_layer)
         self.current_layer_index = len(self.layers) - 1
+        self.add_log(f"Added layer: {name}")
         return new_layer
 
     def remove_layer(self, index):
         if len(self.layers) > 1:
+            name = self.layers[index].name
             # Deselect objects in this layer
             for obj in self.layers[index].objects:
                 if obj in self.selected_objects:
@@ -72,13 +85,22 @@ class ObjectManager:
             
             del self.layers[index]
             self.current_layer_index = min(self.current_layer_index, len(self.layers) - 1)
+            self.add_log(f"Removed layer: {name}")
             return True
         return False
+
+    def find_layer_of_object(self, obj: VectorObject) -> Optional[Layer]:
+        """Find which layer an object belongs to"""
+        for layer in self.layers:
+            if obj in layer.objects:
+                return layer
+        return None
 
     def add_object(self, obj: VectorObject):
         """Add a vector object to current layer"""
         if not self.current_layer.locked:
             self.current_layer.objects.append(obj)
+            self.add_log(f"Added {type(obj).__name__}")
     
     def remove_object(self, obj: VectorObject):
         """Remove a vector object from whichever layer it is in"""
@@ -94,6 +116,7 @@ class ObjectManager:
         self.layers = [Layer("Layer 1")]
         self.current_layer_index = 0
         self.selected_objects.clear()
+        self.add_log("Canvas cleared")
     
     def get_object_at(self, x, y) -> Optional[VectorObject]:
         """Get top object at given position across all visible layers"""
@@ -126,12 +149,15 @@ class ObjectManager:
     
     def delete_selected(self):
         """Delete all selected objects from their respective layers"""
+        deleted_count = len(self.selected_objects)
         for obj in self.selected_objects:
             for layer in self.layers:
                 if not layer.locked and obj in layer.objects:
                     layer.objects.remove(obj)
                     break
         self.selected_objects.clear()
+        if deleted_count > 0:
+            self.add_log(f"Deleted {deleted_count} objects")
     
     def translate_selected(self, dx, dy):
         """Move all selected objects"""
@@ -154,6 +180,7 @@ class ObjectManager:
         
         # Create group
         group = VectorGroup(self.selected_objects.copy(), f"Group {len(self.all_objects)}")
+        count = len(self.selected_objects)
         
         # Remove individual objects from their original layers
         for obj in self.selected_objects:
@@ -169,6 +196,7 @@ class ObjectManager:
         self.selected_objects.clear()
         self.select_object(group)
         
+        self.add_log(f"Grouped {count} objects")
         return group
     
     def ungroup_selected(self):
@@ -176,6 +204,7 @@ class ObjectManager:
         from .vector_objects import VectorGroup
         
         new_objects = []
+        groups_ungrouped = 0
         
         for obj in self.selected_objects.copy():
             if isinstance(obj, VectorGroup):
@@ -192,10 +221,14 @@ class ObjectManager:
                     target_layer.objects.extend(ungrouped)
                     new_objects.extend(ungrouped)
                     self.selected_objects.remove(obj)
+                    groups_ungrouped += 1
         
         # Select ungrouped objects
         for obj in new_objects:
             self.select_object(obj)
+        
+        if groups_ungrouped > 0:
+            self.add_log(f"Ungrouped {groups_ungrouped} groups")
         
         return len(new_objects)
     
@@ -212,6 +245,9 @@ class ObjectManager:
             elif hasattr(obj, 'color'):
                 obj.color = new_color
                 count += 1
+        
+        if count > 0:
+            self.add_log(f"Changed color of {count} objects")
         return count
     
     def rasterize(self, width, height):
@@ -248,7 +284,8 @@ class ObjectManager:
         return {
             'layers': [layer.to_dict() for layer in self.layers],
             'current_layer_index': self.current_layer_index,
-            'palette': self.palette_colors # Include palette!
+            'palette': self.palette_colors,
+            'logs': self.logs
         }
     
     def from_dict(self, data: dict):
@@ -269,6 +306,7 @@ class ObjectManager:
             self.current_layer_index = 0
             
         self.palette_colors = data.get('palette', [])
+        self.logs = data.get('logs', [{"time": "2026-01-01T00:00:00", "message": "Legacy file loaded"}])
     
     def __len__(self):
         return sum(len(l.objects) for l in self.layers)
