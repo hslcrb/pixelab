@@ -6,35 +6,103 @@ import copy
 from .vector_objects import VectorObject, create_object_from_dict
 
 
+class Layer:
+    """Represents a single layer containing vector objects"""
+    def __init__(self, name="Layer 1"):
+        self.name = name
+        self.objects: List[VectorObject] = []
+        self.visible = True
+        self.locked = False
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'visible': self.visible,
+            'locked': self.locked,
+            'objects': [obj.to_dict() for obj in self.objects]
+        }
+
+    @staticmethod
+    def from_dict(data):
+        layer = Layer(data.get('name', 'Layer'))
+        layer.visible = data.get('visible', True)
+        layer.locked = data.get('locked', False)
+        for obj_data in data.get('objects', []):
+            obj = create_object_from_dict(obj_data)
+            if obj:
+                layer.objects.append(obj)
+        return layer
+
+
 class ObjectManager:
-    """Manages all vector objects in the scene"""
+    """Manages multiple layers of vector objects"""
     
     def __init__(self):
-        self.objects: List[VectorObject] = []
+        self.layers: List[Layer] = [Layer("Layer 1")]
+        self.current_layer_index = 0
         self.selected_objects: List[VectorObject] = []
+        self.palette_colors = [] # Store palette in manager for saving
     
+    @property
+    def current_layer(self) -> Layer:
+        return self.layers[self.current_layer_index]
+
+    @property
+    def all_objects(self) -> List[VectorObject]:
+        """Returns all objects from all layers combined"""
+        objs = []
+        for layer in self.layers:
+            objs.extend(layer.objects)
+        return objs
+
+    def add_layer(self, name=None):
+        if not name:
+            name = f"Layer {len(self.layers) + 1}"
+        new_layer = Layer(name)
+        self.layers.append(new_layer)
+        self.current_layer_index = len(self.layers) - 1
+        return new_layer
+
+    def remove_layer(self, index):
+        if len(self.layers) > 1:
+            # Deselect objects in this layer
+            for obj in self.layers[index].objects:
+                if obj in self.selected_objects:
+                    self.selected_objects.remove(obj)
+            
+            del self.layers[index]
+            self.current_layer_index = min(self.current_layer_index, len(self.layers) - 1)
+            return True
+        return False
+
     def add_object(self, obj: VectorObject):
-        """Add a vector object"""
-        self.objects.append(obj)
+        """Add a vector object to current layer"""
+        if not self.current_layer.locked:
+            self.current_layer.objects.append(obj)
     
     def remove_object(self, obj: VectorObject):
-        """Remove a vector object"""
-        if obj in self.objects:
-            self.objects.remove(obj)
+        """Remove a vector object from whichever layer it is in"""
+        for layer in self.layers:
+            if not layer.locked and obj in layer.objects:
+                layer.objects.remove(obj)
+                break
         if obj in self.selected_objects:
             self.selected_objects.remove(obj)
     
     def clear(self):
-        """Clear all objects"""
-        self.objects.clear()
+        """Clear all layers and objects"""
+        self.layers = [Layer("Layer 1")]
+        self.current_layer_index = 0
         self.selected_objects.clear()
     
     def get_object_at(self, x, y) -> Optional[VectorObject]:
-        """Get top object at given position"""
-        # Check from top to bottom
-        for obj in reversed(self.objects):
-            if obj.contains_point(x, y):
-                return obj
+        """Get top object at given position across all visible layers"""
+        # Check from top layer to bottom layer, and top object to bottom object within layer
+        for layer in reversed(self.layers):
+            if layer.visible and not layer.locked:
+                for obj in reversed(layer.objects):
+                    if obj.contains_point(x, y):
+                        return obj
         return None
     
     def select_object(self, obj: VectorObject):
@@ -51,69 +119,83 @@ class ObjectManager:
     
     def deselect_all(self):
         """Deselect all objects"""
-        for obj in self.selected_objects:
-            obj.selected = False
+        for layer in self.layers:
+            for obj in layer.objects:
+                obj.selected = False
         self.selected_objects.clear()
     
     def delete_selected(self):
-        """Delete all selected objects"""
+        """Delete all selected objects from their respective layers"""
         for obj in self.selected_objects:
-            if obj in self.objects:
-                self.objects.remove(obj)
+            for layer in self.layers:
+                if not layer.locked and obj in layer.objects:
+                    layer.objects.remove(obj)
+                    break
         self.selected_objects.clear()
     
     def translate_selected(self, dx, dy):
         """Move all selected objects"""
         for obj in self.selected_objects:
-            obj.translate(dx, dy)
+            # Only move if its layer is not locked
+            is_locked = False
+            for layer in self.layers:
+                if obj in layer.objects and layer.locked:
+                    is_locked = True
+                    break
+            if not is_locked:
+                obj.translate(dx, dy)
     
     def group_selected(self):
-        """Group selected objects"""
+        """Group selected objects as a single group in the current layer"""
         if len(self.selected_objects) < 2:
             return None
         
         from .vector_objects import VectorGroup
         
         # Create group
-        group = VectorGroup(self.selected_objects.copy(), f"Group {len(self.objects)}")
+        group = VectorGroup(self.selected_objects.copy(), f"Group {len(self.all_objects)}")
         
-        # Remove individual objects
+        # Remove individual objects from their original layers
         for obj in self.selected_objects:
-            if obj in self.objects:
-                self.objects.remove(obj)
+            for layer in self.layers:
+                if obj in layer.objects:
+                    layer.objects.remove(obj)
+                    break
         
-        # Add group
-        self.objects.append(group)
+        # Add group to CURRENT layer
+        self.current_layer.objects.append(group)
         
         # Select group
         self.selected_objects.clear()
-        self.selected_objects.append(group)
-        group.selected = True
+        self.select_object(group)
         
         return group
     
     def ungroup_selected(self):
-        """Ungroup selected groups"""
+        """Ungroup selected groups into the layer they belong to"""
         from .vector_objects import VectorGroup
         
         new_objects = []
         
-        for obj in self.selected_objects:
+        for obj in self.selected_objects.copy():
             if isinstance(obj, VectorGroup):
-                # Remove group
-                if obj in self.objects:
-                    self.objects.remove(obj)
+                # Find which layer it's in
+                target_layer = None
+                for layer in self.layers:
+                    if obj in layer.objects:
+                        target_layer = layer
+                        break
                 
-                # Add ungrouped objects
-                ungrouped = obj.ungroup()
-                self.objects.extend(ungrouped)
-                new_objects.extend(ungrouped)
+                if target_layer and not target_layer.locked:
+                    target_layer.objects.remove(obj)
+                    ungrouped = obj.ungroup()
+                    target_layer.objects.extend(ungrouped)
+                    new_objects.extend(ungrouped)
+                    self.selected_objects.remove(obj)
         
         # Select ungrouped objects
-        self.selected_objects.clear()
         for obj in new_objects:
-            obj.selected = True
-            self.selected_objects.append(obj)
+            self.select_object(obj)
         
         return len(new_objects)
     
@@ -121,75 +203,78 @@ class ObjectManager:
         """Change color of selected objects and groups"""
         count = 0
         for obj in self.selected_objects:
-            # Check if it's a group (VectorGroup doesn't typically use its own color)
             from .vector_objects import VectorGroup
             if isinstance(obj, VectorGroup):
-                # Change all objects inside the group
                 for sub_obj in obj.objects:
                     if hasattr(sub_obj, 'color'):
                         sub_obj.color = new_color
                         count += 1
-            # Also change the object's own color if it has one
             elif hasattr(obj, 'color'):
                 obj.color = new_color
                 count += 1
-        
         return count
     
     def rasterize(self, width, height):
         """
-        Rasterize all objects to pixel data
+        Rasterize all visible layers to pixel data
         Returns 2D array of (r, g, b, a) tuples
         """
-        # Initialize with transparent pixels
         pixels = [[(255, 255, 255, 0) for _ in range(width)] for _ in range(height)]
         
-        # Rasterize each object
-        for obj in self.objects:
-            obj_pixels = obj.rasterize(width, height)
-            for x, y, color in obj_pixels:
-                if 0 <= x < width and 0 <= y < height:
-                    # Alpha blending
-                    r, g, b, a = color
-                    if a == 255:
-                        pixels[y][x] = (r, g, b, 255)
-                    elif a > 0:
-                        # Blend with existing pixel
-                        old_r, old_g, old_b, old_a = pixels[y][x]
-                        alpha = a / 255.0
-                        new_r = int(r * alpha + old_r * (1 - alpha))
-                        new_g = int(g * alpha + old_g * (1 - alpha))
-                        new_b = int(b * alpha + old_b * (1 - alpha))
-                        new_a = min(255, a + old_a)
-                        pixels[y][x] = (new_r, new_g, new_b, new_a)
+        for layer in self.layers:
+            if not layer.visible:
+                continue
+            
+            for obj in layer.objects:
+                obj_pixels = obj.rasterize(width, height)
+                for x, y, color in obj_pixels:
+                    if 0 <= x < width and 0 <= y < height:
+                        r, g, b, a = color
+                        if a == 255:
+                            pixels[y][x] = (r, g, b, 255)
+                        elif a > 0:
+                            old_r, old_g, old_b, old_a = pixels[y][x]
+                            alpha = a / 255.0
+                            new_r = int(r * alpha + old_r * (1 - alpha))
+                            new_g = int(g * alpha + old_g * (1 - alpha))
+                            new_b = int(b * alpha + old_b * (1 - alpha))
+                            new_a = min(255, a + old_a)
+                            pixels[y][x] = (new_r, new_g, new_b, new_a)
         
         return pixels
-    
-    def copy_objects(self) -> List[VectorObject]:
-        """Deep copy all objects"""
-        return copy.deepcopy(self.objects)
-    
-    def restore_objects(self, objects: List[VectorObject]):
-        """Restore objects from copy"""
-        self.objects = copy.deepcopy(objects)
-        self.selected_objects.clear()
-    
+
     def to_dict(self) -> dict:
-        """Serialize to dictionary"""
+        """Serialize to dictionary including layers and palette"""
         return {
-            'objects': [obj.to_dict() for obj in self.objects]
+            'layers': [layer.to_dict() for layer in self.layers],
+            'current_layer_index': self.current_layer_index,
+            'palette': self.palette_colors # Include palette!
         }
     
     def from_dict(self, data: dict):
         """Deserialize from dictionary"""
-        self.clear()
-        for obj_data in data.get('objects', []):
-            obj = create_object_from_dict(obj_data)
-            if obj:
-                self.add_object(obj)
+        self.selected_objects.clear()
+        
+        if 'layers' in data:
+            self.layers = [Layer.from_dict(l_data) for l_data in data['layers']]
+            self.current_layer_index = data.get('current_layer_index', 0)
+        else:
+            # Legacy format support
+            legacy_layer = Layer("Background")
+            for obj_data in data.get('objects', []):
+                obj = create_object_from_dict(obj_data)
+                if obj:
+                    legacy_layer.objects.append(obj)
+            self.layers = [legacy_layer]
+            self.current_layer_index = 0
+            
+        self.palette_colors = data.get('palette', [])
     
     def __len__(self):
-        return len(self.objects)
+        return sum(len(l.objects) for l in self.layers)
     
     def __iter__(self):
-        return iter(self.objects)
+        # Flattened iterator
+        for layer in self.layers:
+            for obj in layer.objects:
+                yield obj

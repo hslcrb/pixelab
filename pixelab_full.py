@@ -87,10 +87,22 @@ class PixelLabFullApp:
         # Canvas Widget
         self.canvas_widget = VectorCanvas(canvas_frame, width=32, height=32, on_change=self._on_canvas_change)
         
-        # Right panel - Color picker
-        # (MUST be created after canvas_widget because set_color calls _on_color_change)
-        self.color_picker = ColorPicker(main_container, self.palette, self._on_color_change)
-        self.color_picker.pack(side=tk.RIGHT, fill=tk.Y)
+        # Right panel - Container for ColorPicker and LayerPanel
+        right_container = tk.Frame(main_container, bg="#2b2b2b", width=200)
+        right_container.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Color picker (Top half of right panel)
+        self.color_picker = ColorPicker(right_container, self.palette, self._on_color_change)
+        self.color_picker.pack(side=tk.TOP, fill=tk.X)
+        self.color_picker.config(height=350)
+        
+        # Separator
+        tk.Frame(right_container, bg="#444444", height=2).pack(fill=tk.X, pady=5)
+        
+        # Layer panel (Bottom half of right panel)
+        from src.ui.layerpanel import LayerPanel
+        self.layer_panel = LayerPanel(right_container, self.canvas_widget.object_manager, self.canvas_widget.render)
+        self.layer_panel.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
         # Status bar
         status_frame = tk.Frame(self.root, bg="#2b2b2b", height=25)
@@ -422,6 +434,7 @@ class PixelLabFullApp:
         self.zoom_title.config(text=t('zoom_label'))
         self.toolbar.refresh_texts()
         self.color_picker.refresh_texts()
+        self.layer_panel.refresh_list()
         
         self._update_status(f"Language: {'한국어' if lang == 'ko' else 'English'}")
     
@@ -477,6 +490,7 @@ class PixelLabFullApp:
         if size:
             self.canvas_widget.resize_canvas(size, size)
             self.canvas_widget.object_manager.clear()
+            self.layer_panel.refresh_list()
             self.canvas_widget.render()
             self.current_file = None
             self.modified = False
@@ -497,6 +511,9 @@ class PixelLabFullApp:
                 
                 # Load objects
                 self.canvas_widget.object_manager.from_dict(data)
+                
+                # Refresh Layer list
+                self.layer_panel.refresh_list()
                 
                 # Load palette if present
                 if 'palette' in data:
@@ -674,7 +691,7 @@ class PixelLabFullApp:
     def _update_status(self, message=""):
         """Update status"""
         if not message:
-            obj_count = len(self.canvas_widget.object_manager.objects)
+            obj_count = len(self.canvas_widget.object_manager)
             message = f"{t('ready')} - {obj_count} {t('objects')}"
         
         self.status_label.config(text=message)

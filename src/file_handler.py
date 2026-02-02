@@ -13,12 +13,19 @@ class FileHandler:
     @staticmethod
     def save_plb(filepath, canvas, palette):
         """Save project as .plb file"""
+        # Set palette in manager before saving
+        canvas.object_manager.palette_colors = palette.to_hex_list()
+        
+        # Get data from object manager (includes layers and objects)
+        mgr_data = canvas.object_manager.to_dict()
+        
         data = {
-            "version": "1.0",
+            "version": "2.0",
             "width": canvas.width,
             "height": canvas.height,
-            "palette": palette.to_hex_list(),
-            "pixels": canvas.get_flat_pixels(),
+            "layers": mgr_data['layers'],
+            "current_layer_index": mgr_data['current_layer_index'],
+            "palette": mgr_data['palette'],
             "metadata": {
                 "created": datetime.now().isoformat(),
                 "modified": datetime.now().isoformat(),
@@ -41,18 +48,9 @@ class FileHandler:
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # Version check
-        version = data.get('version', '1.0')
-        if version != '1.0':
-            raise ValueError(f"Unsupported PLB version: {version}")
-        
         # Validate data
-        width = data['width']
-        height = data['height']
-        pixels = data['pixels']
-        
-        if len(pixels) != width * height:
-            raise ValueError(f"Pixel data size mismatch: expected {width*height}, got {len(pixels)}")
+        if 'width' not in data or 'height' not in data:
+            raise ValueError("Invalid PLB file: missing width/height")
         
         return data
     

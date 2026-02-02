@@ -321,7 +321,7 @@ class VectorSelectTool(VectorTool):
             # Select all objects within marquee
             x1, y1, x2, y2 = self.marquee_rect
             
-            for obj in object_manager.objects:
+            for obj in object_manager:
                 # Get object bounds
                 bounds = obj.get_bounds()
                 obj_x1, obj_y1, obj_x2, obj_y2 = bounds
