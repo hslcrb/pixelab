@@ -76,10 +76,10 @@ class ImageImporter:
         filepath = filedialog.askopenfilename(
             title=t('import_image_title'),
             filetypes=[
-                ("Image Files", "*.png *.jpg *.jpeg *.bmp *.gif *.tiff"),
+                (t('image_files'), "*.png *.jpg *.jpeg *.bmp *.gif *.tiff"),
                 ("PNG", "*.png"),
                 ("JPEG", "*.jpg *.jpeg"),
-                ("All Files", "*.*")
+                (t('all_files'), "*.*")
             ]
         )
         
@@ -118,7 +118,7 @@ class ImageImporter:
                 
                 # Trace to pixels
                 progress.update(40, t('tracing_pixels'),
-                               f"Processing {new_width}x{new_height} pixels")
+                               t('processing_pixels').format(count=f"{new_width}x{new_height}"))
                 
                 pixels_data = img.load()
                 objects = []
@@ -140,16 +140,16 @@ class ImageImporter:
                             progress.update(
                                 percent,
                                 t('tracing_pixels'),
-                                f"{processed}/{total_pixels} pixels"
+                                t('processing_pixels').format(count=f"{processed}/{total_pixels}")
                             )
                 
                 # Create group
                 progress.update(95, t('creating_group'),
-                               f"{len(objects)} objects created")
+                               t('objects_created').format(count=len(objects)))
                 
                 import os
                 filename = os.path.basename(filepath)
-                group = VectorGroup(objects, f"Imported: {filename}")
+                group = VectorGroup(objects, f"{t('imported')}: {filename}")
                 
                 progress.update(100, t('complete'), f"{t('imported')} {len(objects)} pixels")
                 
@@ -174,7 +174,7 @@ class ImageImporter:
         
         # Check for errors
         if result['error']:
-            messagebox.showerror(t('import_error'), f"Failed to import image:\n{result['error']}")
+            messagebox.showerror(t('import_error'), f"{t('failed_import')}:\n{result['error']}")
             return None
         
         # Call callback

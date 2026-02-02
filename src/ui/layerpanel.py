@@ -16,13 +16,14 @@ class LayerPanel(tk.Frame):
         from src.i18n import t
         
         # Title
-        tk.Label(
+        self.title_label = tk.Label(
             self,
             text=t('layers'),
             bg="#2b2b2b",
             fg="#ffffff",
             font=("Arial", 10, "bold")
-        ).pack(pady=(10, 5))
+        )
+        self.title_label.pack(pady=(10, 5))
         
         # Layer List Container
         self.list_container = tk.Frame(self, bg="#2b2b2b")
@@ -53,6 +54,12 @@ class LayerPanel(tk.Frame):
         tk.Button(btn_frame, text="↑", command=self._move_layer_up, bg="#3c3c3c", fg="white", width=3).pack(side=tk.LEFT, padx=2)
         tk.Button(btn_frame, text="↓", command=self._move_layer_down, bg="#3c3c3c", fg="white", width=3).pack(side=tk.LEFT, padx=2)
         
+        self.refresh_list()
+    
+    def refresh_texts(self):
+        """Update texts for current language"""
+        from src.i18n import t
+        self.title_label.config(text=t('layers'))
         self.refresh_list()
     
     def refresh_list(self):

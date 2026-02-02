@@ -148,7 +148,6 @@ class Toolbar(tk.Frame):
         self.options_label.config(text=t('options_label'))
         self.size_label.config(text=t('size_label'))
         self.filled_check.config(text=t('filled_label'))
-        self.pixel_label.config(text=t('pixel_scale'))
         
         for name, icon, _ in self.tools:
             if name in self.buttons:

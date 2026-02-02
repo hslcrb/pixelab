@@ -203,6 +203,14 @@ class PixelLabFullApp:
         edit_menu.add_separator()
         edit_menu.add_command(label=t('clear_canvas'), command=self.clear_canvas)
         
+        # Object menu
+        obj_menu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label=t('object'), menu=obj_menu)
+        obj_menu.add_command(label=t('bring_forward'), command=self.reorder_up)
+        obj_menu.add_command(label=t('send_backward'), command=self.reorder_down)
+        obj_menu.add_command(label=t('bring_to_front'), command=self.reorder_top)
+        obj_menu.add_command(label=t('send_to_back'), command=self.reorder_bottom)
+        
         # View menu
         view_menu = Menu(menubar, tearoff=0)
         menubar.add_cascade(label=t('view'), menu=view_menu)
@@ -211,7 +219,14 @@ class PixelLabFullApp:
         view_menu.add_command(label=t('zoom_out'), command=self._zoom_out, accelerator="-")
         view_menu.add_command(label=t('activity_logs'), command=self.show_logs)
         view_menu.add_separator()
-        view_menu.add_command(label="한/영 전환", command=self.toggle_language, accelerator="F1")
+        view_menu.add_command(label=t('toggle_language_shortcut'), command=self.toggle_language, accelerator="F1")
+        
+        # Help menu
+        help_menu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label=t('help'), menu=help_menu)
+        help_menu.add_command(label=t('help'), command=self.show_help)
+        help_menu.add_command(label=t('shortcuts'), command=self.show_shortcuts)
+        help_menu.add_command(label=t('about'), command=self.show_about)
         
         self.menubar = menubar
     
@@ -401,7 +416,7 @@ class PixelLabFullApp:
             obj = self.canvas_widget.object_manager.selected_objects[0]
             layer = self.canvas_widget.object_manager.find_layer_of_object(obj)
             if layer:
-                layer_label = f"Layer: {layer.name}" if get_language() == 'en' else f"레이어: {layer.name}"
+                layer_label = t('layer_info').format(name=layer.name)
                 self.context_menu.add_command(label=layer_label, state="disabled")
                 self.context_menu.add_separator()
 
@@ -457,7 +472,7 @@ class PixelLabFullApp:
         self.canvas_widget.render()
         self.zoom_label.config(text=f"{int(self.canvas_widget.zoom_level)}x")
         
-    def show_help(self):
+    def show_shortcuts(self):
         """Show help dialog"""
         help_win = tk.Toplevel(self.root)
         help_win.title(t('help_text'))
@@ -520,7 +535,7 @@ class PixelLabFullApp:
         status = t('grid_shown') if self.canvas_widget.show_grid else t('grid_hidden')
         self._update_status(status)
     
-    def toggle_language(self):
+    def toggle_language(self, event=None):
         """Toggle Korean/English"""
         lang = toggle_language()
         self._create_menu()  # Recreate menu
@@ -529,7 +544,10 @@ class PixelLabFullApp:
         self.zoom_title.config(text=t('zoom_label'))
         self.toolbar.refresh_texts()
         self.color_picker.refresh_texts()
-        self.layer_panel.refresh_list()
+        self.layer_panel.refresh_texts()
+        
+        # Refresh status bar
+        self._update_status()
         
         self._update_status(f"Language: {'한국어' if lang == 'ko' else 'English'}")
     
@@ -772,7 +790,7 @@ class PixelLabFullApp:
         # Show color picker
         color = colorchooser.askcolor(
             color=f"#{self.current_color[0]:02x}{self.current_color[1]:02x}{self.current_color[2]:02x}",
-            title="색상 선택" if get_language() == 'ko' else "Choose Color"
+            title=t('choose_color')
         )
         
         print(f"[DEBUG] Color picker result: {color}")
@@ -791,8 +809,7 @@ class PixelLabFullApp:
             self.canvas_widget.render()
             print("[DEBUG] Canvas rendered")
             
-            msg = f"{count}개 객체 색상 변경됨" if get_language() == 'ko' else f"Changed color of {count} objects"
-            self._update_status(msg)
+            self._update_status(t('changed_color_objs').format(count=count))
     
     def clear_canvas(self):
         """Clear canvas"""
@@ -842,8 +859,8 @@ def main():
     root.geometry(f"{width}x{height}+{x}+{y}")
     
     # Console banner
-    print(f"PixeLab v{VERSION} - Full UI Version")
-    print("단축키: F1(한/영) V(선택) P(연필) Ctrl+I(가져오기) Ctrl+G(그룹)")
+    print(f"PixeLab v{VERSION}")
+    print("Toggle Language: F1 | Toggle Grid: G")
     
     app = PixelLabFullApp(root)
     root.mainloop()
