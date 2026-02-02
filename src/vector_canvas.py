@@ -26,9 +26,21 @@ class VectorCanvas:
         self.pan_offset = [0, 0]
         self.show_grid = True
         
-        # Canvas widget
-        self.canvas = Canvas(parent, bg="#1e1e1e", highlightthickness=0)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        # Canvas Widget and Scrollbars
+        self.canvas_container = tk.Frame(parent, bg="#1e1e1e")
+        self.canvas_container.pack(fill=tk.BOTH, expand=True)
+        
+        self.canvas_container.grid_rowconfigure(0, weight=1)
+        self.canvas_container.grid_columnconfigure(0, weight=1)
+        
+        self.canvas = Canvas(self.canvas_container, bg="#1e1e1e", highlightthickness=0)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        
+        self.v_scrollbar = tk.Scrollbar(self.canvas_container, orient=tk.VERTICAL, command=self._on_vscroll)
+        self.v_scrollbar.grid(row=0, column=1, sticky="ns")
+        
+        self.h_scrollbar = tk.Scrollbar(self.canvas_container, orient=tk.HORIZONTAL, command=self._on_hscroll)
+        self.h_scrollbar.grid(row=1, column=0, sticky="ew")
         
         # Rendering cache
         self.photo_image = None
@@ -103,6 +115,24 @@ class VectorCanvas:
         self.pan_offset[1] += dy
         self.need_render = True
         self.render()
+    
+    def _on_vscroll(self, *args):
+        """Handle vertical scrollbar"""
+        if args[0] == 'scroll':
+            # args[1] is amount, args[2] is units
+            self.pan(0, -int(args[1]) * 20)
+        elif args[0] == 'moveto':
+            # args[1] is position (0 to 1)
+            # This is complex to map accurately with logical pan, 
+            # so we'll just support step scrolling for now
+            pass
+
+    def _on_hscroll(self, *args):
+        """Handle horizontal scrollbar"""
+        if args[0] == 'scroll':
+            self.pan(-int(args[1]) * 20, 0)
+        elif args[0] == 'moveto':
+            pass
     
     def screen_to_canvas(self, screen_x, screen_y):
         """Convert screen coordinates to canvas pixel coordinates"""
@@ -271,6 +301,19 @@ class VectorCanvas:
             self.photo_image = ImageTk.PhotoImage(img)
             self.canvas.delete("all")
             self.canvas.create_image(0, 0, image=self.photo_image, anchor=tk.NW)
+            
+            # Update scrollbars
+            # Define logical range as current zoom * 2 + canvas dimensions
+            # We use a simple 0..1 range update
+            max_pan_x = max(1000, self.width * self.zoom_level)
+            max_pan_y = max(1000, self.height * self.zoom_level)
+            
+            # Update scrollbar positions (very simplified)
+            vx = 0.5 - (self.pan_offset[0] / max_pan_x)
+            vy = 0.5 - (self.pan_offset[1] / max_pan_y)
+            
+            self.h_scrollbar.set(max(0, vx-0.1), min(1, vx+0.1))
+            self.v_scrollbar.set(max(0, vy-0.1), min(1, vy+0.1))
             
             self.need_render = False
             

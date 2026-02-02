@@ -16,6 +16,8 @@ class I18n:
                 'view': '보기',
                 'object': '객체',
                 'help': '도움말',
+                'about': '정보',
+                'shortcuts': '단축키',
                 
                 # File menu
                 'new': '새로 만들기',
@@ -94,6 +96,10 @@ class I18n:
                 'width': '너비',
                 'height': '높이',
                 'apply': '적용',
+                'pixel_scale': '픽셀 스케일',
+                'help_text': 'PixeLab 도움말',
+                'panning_help': '방향키: 상하좌우 이동 | Ctrl +/-: 확대/축소',
+                'tools_help': 'V: 선택 | P: 연필 | B: 브러시 | E: 지우개 | L: 선 | R: 사각형 | C: 원',
             },
             'en': {
                 # Menu
@@ -102,6 +108,8 @@ class I18n:
                 'view': 'View',
                 'object': 'Object',
                 'help': 'Help',
+                'about': 'About',
+                'shortcuts': 'Shortcuts',
                 
                 # File menu
                 'new': 'New',
@@ -180,6 +188,10 @@ class I18n:
                 'width': 'Width',
                 'height': 'Height',
                 'apply': 'Apply',
+                'pixel_scale': 'Pixel Scale',
+                'help_text': 'PixeLab Help',
+                'panning_help': 'Arrow Keys: Pan | Ctrl +/-: Zoom',
+                'tools_help': 'V: Select | P: Pencil | B: Brush | E: Eraser | L: Line | R: Rect | C: Circle',
             }
         }
     

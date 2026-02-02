@@ -116,6 +116,35 @@ class Toolbar(tk.Frame):
             command=self._on_filled_change
         )
         self.filled_check.pack(padx=8, pady=2)
+        
+        # Pixel scale (experimental "make pixel smaller/larger")
+        pixel_frame = tk.Frame(self, bg="#2b2b2b")
+        pixel_frame.pack(fill=tk.X, padx=8, pady=5)
+        
+        self.pixel_label = tk.Label(
+            pixel_frame,
+            text=t('pixel_scale'),
+            bg="#2b2b2b",
+            fg="#ffffff",
+            font=("Arial", 8)
+        )
+        self.pixel_label.pack(side=tk.LEFT)
+        
+        self.pixel_var = tk.IntVar(value=10)
+        self.pixel_scale = tk.Scale(
+            pixel_frame,
+            from_=1,
+            to=50,
+            orient=tk.HORIZONTAL,
+            variable=self.pixel_var,
+            bg="#3c3c3c",
+            fg="#ffffff",
+            highlightthickness=0,
+            troughcolor="#2b2b2b",
+            activebackground="#4c4c4c",
+            command=self._on_pixel_change
+        )
+        self.pixel_scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
 
     def refresh_texts(self):
         """Update texts for current language"""
@@ -124,6 +153,7 @@ class Toolbar(tk.Frame):
         self.options_label.config(text=t('options_label'))
         self.size_label.config(text=t('size_label'))
         self.filled_check.config(text=t('filled_label'))
+        self.pixel_label.config(text=t('pixel_scale'))
         
         for name, icon, _ in self.tools:
             if name in self.buttons:
@@ -156,6 +186,15 @@ class Toolbar(tk.Frame):
     def _on_filled_change(self):
         """Handle filled option change"""
         self.app.set_tool_filled(self.filled_var.get())
+        
+    def _on_pixel_change(self, value):
+        """Handle pixel scale change"""
+        if hasattr(self.app, 'canvas_widget'):
+            self.app.canvas_widget.zoom_level = float(value)
+            self.app.canvas_widget.need_render = True
+            self.app.canvas_widget.render()
+            if hasattr(self.app, 'zoom_label'):
+                self.app.zoom_label.config(text=f"{int(value)}x")
     
     def select_tool_by_name(self, name):
         """Programmatically select a tool"""

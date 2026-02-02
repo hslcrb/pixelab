@@ -217,6 +217,12 @@ class PixelLabFullApp:
         self.root.bind("<Control-plus>", lambda e: self._zoom_in())
         self.root.bind("<Control-equal>", lambda e: self._zoom_in())
         self.root.bind("<Control-minus>", lambda e: self._zoom_out())
+        
+        # Arrow key navigation
+        self.root.bind("<Left>", lambda e: self.canvas_widget.pan(20, 0))
+        self.root.bind("<Right>", lambda e: self.canvas_widget.pan(-20, 0))
+        self.root.bind("<Up>", lambda e: self.canvas_widget.pan(0, 20))
+        self.root.bind("<Down>", lambda e: self.canvas_widget.pan(0, -20))
     
     def select_tool(self, name):
         """Select tool"""
@@ -361,6 +367,45 @@ class PixelLabFullApp:
         self.canvas_widget.need_render = True
         self.canvas_widget.render()
         self.zoom_label.config(text=f"{int(self.canvas_widget.zoom_level)}x")
+        
+    def show_help(self):
+        """Show help dialog"""
+        help_win = tk.Toplevel(self.root)
+        help_win.title(t('help_text'))
+        help_win.geometry("400x300")
+        help_win.resizable(False, False)
+        
+        frame = tk.Frame(help_win, padx=20, pady=20, bg="#2b2b2b")
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        tk.Label(frame, text=t('help_text'), fg="white", bg="#2b2b2b", font=("Arial", 12, "bold")).pack(pady=(0, 10))
+        tk.Label(frame, text=t('panning_help'), fg="white", bg="#2b2b2b", justify=tk.LEFT).pack(anchor="w", pady=5)
+        tk.Label(frame, text=t('tools_help'), fg="white", bg="#2b2b2b", justify=tk.LEFT).pack(anchor="w", pady=5)
+        
+        shortcuts = [
+            "Ctrl + N: New",
+            "Ctrl + O: Open",
+            "Ctrl + S: Save",
+            "Ctrl + I: Import",
+            "Ctrl + G: Group",
+            "Ctrl + U: Ungroup",
+            "Delete: Delete Selected",
+            "G: Toggle Grid",
+            "F1: Toggle Language",
+            "Shift + Mouse Wheel: Horizontal Pan"
+        ]
+        
+        s_frame = tk.Frame(frame, bg="#3c3c3c", padx=10, pady=10)
+        s_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        
+        for s in shortcuts:
+            tk.Label(s_frame, text=s, fg="#cccccc", bg="#3c3c3c", font=("Courier", 9)).pack(anchor="w")
+            
+        tk.Button(frame, text="OK", command=help_win.destroy).pack(pady=10)
+
+    def show_about(self):
+        """Show about dialog"""
+        messagebox.showinfo(t('about'), "PixeLab v2.1\nVector-Pixel Hybrid Editor\nCreated by rheehose")
     
     def toggle_grid(self):
         """Toggle grid"""
