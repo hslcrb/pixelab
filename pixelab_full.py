@@ -76,7 +76,8 @@ class PixelLabFullApp:
         zoom_frame = tk.Frame(canvas_frame, bg="#2b2b2b")
         zoom_frame.pack(side=tk.TOP, fill=tk.X, pady=5)
         
-        tk.Label(zoom_frame, text="Zoom:", bg="#2b2b2b", fg="white").pack(side=tk.LEFT, padx=5)
+        self.zoom_title = tk.Label(zoom_frame, text=t('zoom_label'), bg="#2b2b2b", fg="white")
+        self.zoom_title.pack(side=tk.LEFT, padx=5)
         
         zoom_out_btn = tk.Button(zoom_frame, text="-", command=self._zoom_out, bg="#3c3c3c", fg="white")
         zoom_out_btn.pack(side=tk.LEFT, padx=2)
@@ -155,6 +156,8 @@ class PixelLabFullApp:
         file_menu.add_command(label=t('export_png'), command=self.export_png)
         file_menu.add_command(label=t('export_svg'), command=self.export_svg)
         file_menu.add_separator()
+        file_menu.add_command(label=t('canvas_size'), command=self.change_canvas_size)
+        file_menu.add_separator()
         file_menu.add_command(label=t('exit'), command=self.quit_app)
         
         # Edit menu
@@ -210,6 +213,9 @@ class PixelLabFullApp:
         self.root.bind("g", lambda e: self.toggle_grid())
         self.root.bind("<plus>", lambda e: self._zoom_in())
         self.root.bind("<minus>", lambda e: self._zoom_out())
+        self.root.bind("<Control-plus>", lambda e: self._zoom_in())
+        self.root.bind("<Control-equal>", lambda e: self._zoom_in())
+        self.root.bind("<Control-minus>", lambda e: self._zoom_out())
     
     def select_tool(self, name):
         """Select tool"""
@@ -233,6 +239,16 @@ class PixelLabFullApp:
         """Handle color change"""
         self.current_color = color
         self.current_tool.set_color(color)
+        
+        # PROACTIVE: If we have selected objects, change their color too!
+        # This addresses "Can I never change pixel color once set?"
+        sel_count = len(self.canvas_widget.object_manager.selected_objects)
+        if sel_count > 0:
+            count = self.canvas_widget.object_manager.change_selected_color(color)
+            self.canvas_widget.need_render = True
+            self.canvas_widget.render()
+            if count > 0:
+                self._update_status(f"{count} {t('objects')} {t('selected')} -> {t('color')} {t('changed')}")
     
     def _on_eyedropper_pick(self, color):
         """Handle eyedropper color pick"""
@@ -305,7 +321,7 @@ class PixelLabFullApp:
         
         # Change Color
         context_menu.add_command(
-            label=f"색상 변경... ({sel_count}개)" if get_language() == 'ko' else f"Change Color... ({sel_count})",
+            label=f"{t('change_color')}... ({sel_count})",
             command=self.change_selected_color
         )
         
@@ -322,7 +338,7 @@ class PixelLabFullApp:
         
         context_menu.add_separator()
         context_menu.add_command(
-            label="삭제" if get_language() == 'ko' else "Delete",
+            label=t('delete'),
             command=self.delete_selected
         )
         
@@ -353,7 +369,53 @@ class PixelLabFullApp:
         """Toggle Korean/English"""
         lang = toggle_language()
         self._create_menu()  # Recreate menu
+        
+        # Update component labels
+        self.zoom_title.config(text=t('zoom_label'))
+        self.toolbar.refresh_texts()
+        self.color_picker.refresh_texts()
+        
         self._update_status(f"Language: {'한국어' if lang == 'ko' else 'English'}")
+    
+    def change_canvas_size(self):
+        """Change canvas dimensions with dialog"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(t('canvas_size'))
+        dialog.geometry("250x150")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        main_frame = tk.Frame(dialog, padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Width
+        tk.Label(main_frame, text=f"{t('width')}:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        width_var = tk.StringVar(value=str(self.canvas_widget.width))
+        width_entry = tk.Entry(main_frame, textvariable=width_var, width=10)
+        width_entry.grid(row=0, column=1, padx=10)
+        
+        # Height
+        tk.Label(main_frame, text=f"{t('height')}:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        height_var = tk.StringVar(value=str(self.canvas_widget.height))
+        height_entry = tk.Entry(main_frame, textvariable=height_var, width=10)
+        height_entry.grid(row=1, column=1, padx=10)
+        
+        def apply():
+            try:
+                w = int(width_var.get())
+                h = int(height_var.get())
+                if 1 <= w <= 1024 and 1 <= h <= 1024:
+                    self.canvas_widget.resize_canvas(w, h)
+                    dialog.destroy()
+                    self._update_status(f"Canvas resized to {w}x{h}")
+                else:
+                    messagebox.showerror("Error", "Size must be between 1 and 1024")
+            except ValueError:
+                messagebox.showerror("Error", "Invalid input")
+        
+        btn_apply = tk.Button(main_frame, text=t('apply'), command=apply)
+        btn_apply.grid(row=2, column=0, columnspan=2, pady=10)
     
     def new_file(self):
         """New file"""
@@ -363,7 +425,7 @@ class PixelLabFullApp:
             self.save_file()
         
         # Get canvas size
-        size = simpledialog.askinteger("New Canvas", "Canvas size:", initialvalue=32, minvalue=8, maxvalue=512)
+        size = simpledialog.askinteger(t('new'), f"{t('canvas_size')}:", initialvalue=32, minvalue=8, maxvalue=512)
         if size:
             self.canvas_widget.resize_canvas(size, size)
             self.canvas_widget.object_manager.clear()

@@ -74,6 +74,26 @@ class I18n:
                 'objects': '객체',
                 'selected': '선택됨',
                 'position': '위치',
+                'delete': '삭제',
+                'change_color': '색상 변경',
+                
+                # Labels
+                'tools_label': '도구',
+                'zoom_label': '줌',
+                'options_label': '옵션',
+                'colors_label': '색상',
+                'palette_label': '팔레트',
+                'current_color': '현재:',
+                'choose_color': '색상 선택...',
+                'add_to_palette': '팔레트에 추가',
+                'size_label': '크기:',
+                'filled_label': '채우기',
+                
+                # Canvas Size
+                'canvas_size': '캔버스 크기',
+                'width': '너비',
+                'height': '높이',
+                'apply': '적용',
             },
             'en': {
                 # Menu
@@ -140,6 +160,26 @@ class I18n:
                 'objects': 'objects',
                 'selected': 'selected',
                 'position': 'Position',
+                'delete': 'Delete',
+                'change_color': 'Change Color',
+                
+                # Labels
+                'tools_label': 'Tools',
+                'zoom_label': 'Zoom',
+                'options_label': 'Options',
+                'colors_label': 'Colors',
+                'palette_label': 'Palette',
+                'current_color': 'Current:',
+                'choose_color': 'Choose Color...',
+                'add_to_palette': 'Add to Palette',
+                'size_label': 'Size:',
+                'filled_label': 'Filled',
+                
+                # Canvas Size
+                'canvas_size': 'Canvas Size',
+                'width': 'Width',
+                'height': 'Height',
+                'apply': 'Apply',
             }
         }
     

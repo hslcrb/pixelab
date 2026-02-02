@@ -16,27 +16,30 @@ class ColorPicker(tk.Frame):
         
         self.current_color = (0, 0, 0, 255)
         
+        from src.i18n import t
+        
         # Title
-        title = tk.Label(
+        self.title_label = tk.Label(
             self,
-            text="Colors",
+            text=t('colors_label'),
             bg="#2b2b2b",
             fg="#ffffff",
             font=("Arial", 10, "bold")
         )
-        title.pack(pady=(10, 5))
+        self.title_label.pack(pady=(10, 5))
         
         # Current color display
         color_frame = tk.Frame(self, bg="#2b2b2b")
         color_frame.pack(pady=10, padx=10, fill=tk.X)
         
-        tk.Label(
+        self.current_color_label = tk.Label(
             color_frame,
-            text="Current:",
+            text=t('current_color'),
             bg="#2b2b2b",
             fg="#ffffff",
             font=("Arial", 9)
-        ).pack(side=tk.LEFT)
+        )
+        self.current_color_label.pack(side=tk.LEFT)
         
         self.current_color_canvas = tk.Canvas(
             color_frame,
@@ -49,9 +52,9 @@ class ColorPicker(tk.Frame):
         self.current_color_canvas.pack(side=tk.LEFT, padx=(10, 0))
         
         # Color picker button
-        btn_pick = tk.Button(
+        self.btn_pick = tk.Button(
             self,
-            text="Choose Color...",
+            text=t('choose_color'),
             command=self._pick_color,
             bg="#3c3c3c",
             fg="#ffffff",
@@ -63,12 +66,12 @@ class ColorPicker(tk.Frame):
             pady=5,
             cursor="hand2"
         )
-        btn_pick.pack(padx=10, pady=5, fill=tk.X)
+        self.btn_pick.pack(padx=10, pady=5, fill=tk.X)
         
         # Add to palette button
-        btn_add = tk.Button(
+        self.btn_add = tk.Button(
             self,
-            text="Add to Palette",
+            text=t('add_to_palette'),
             command=self._add_to_palette,
             bg="#3c3c3c",
             fg="#ffffff",
@@ -80,20 +83,19 @@ class ColorPicker(tk.Frame):
             pady=5,
             cursor="hand2"
         )
-        btn_add.pack(padx=10, pady=5, fill=tk.X)
+        self.btn_add.pack(padx=10, pady=5, fill=tk.X)
         
-        # Palette section
+        # Palette section separator
         separator = tk.Frame(self, bg="#444444", height=2)
         separator.pack(fill=tk.X, pady=10, padx=10)
-        
-        palette_label = tk.Label(
-            self,
-            text="Palette",
-            bg="#2b2b2b",
-            fg="#ffffff",
-            font=("Arial", 9, "bold")
-        )
-        palette_label.pack(pady=(5, 5))
+
+    def refresh_texts(self):
+        """Update texts for current language"""
+        from src.i18n import t
+        self.title_label.config(text=t('colors_label'))
+        self.current_color_label.config(text=t('current_color'))
+        self.btn_pick.config(text=t('choose_color'))
+        self.btn_add.config(text=t('add_to_palette'))
         
         # Scrollable palette
         palette_container = tk.Frame(self, bg="#2b2b2b")
@@ -137,9 +139,10 @@ class ColorPicker(tk.Frame):
         initial_color = f"#{r:02x}{g:02x}{b:02x}"
         
         # Show color chooser
+        from src.i18n import t
         color = colorchooser.askcolor(
             color=initial_color,
-            title="Choose Color"
+            title=t('choose_color')
         )
         
         if color and color[0]:
@@ -188,6 +191,7 @@ class ColorPicker(tk.Frame):
                 relief=tk.RAISED,
                 borderwidth=2,
                 cursor="hand2",
+                activebackground=hex_color,
                 command=lambda c=color: self.set_color(c)
             )
             btn.grid(row=row, column=col, padx=2, pady=2, sticky="nsew")

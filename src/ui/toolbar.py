@@ -29,21 +29,23 @@ class Toolbar(tk.Frame):
         self.buttons = {}
         self.selected_tool = None
         
+        from src.i18n import t
+        
         # Title
-        title = tk.Label(
+        self.title_label = tk.Label(
             self, 
-            text="Tools", 
+            text=t('tools_label'), 
             bg="#2b2b2b", 
             fg="#ffffff",
             font=("Arial", 10, "bold")
         )
-        title.pack(pady=(10, 5))
+        self.title_label.pack(pady=(10, 5))
         
         # Tool buttons
         for name, icon, key in self.tools:
             btn = tk.Button(
                 self,
-                text=f"{icon}\n{name}",
+                text=f"{icon}\n{t(name.lower())}",
                 command=lambda n=name: self._select_tool(n),
                 bg="#3c3c3c",
                 fg="#ffffff",
@@ -62,27 +64,27 @@ class Toolbar(tk.Frame):
         separator = tk.Frame(self, bg="#444444", height=2)
         separator.pack(fill=tk.X, pady=10, padx=8)
         
-        options_label = tk.Label(
+        self.options_label = tk.Label(
             self,
-            text="Options",
+            text=t('options_label'),
             bg="#2b2b2b",
             fg="#ffffff",
             font=("Arial", 9, "bold")
         )
-        options_label.pack(pady=(5, 5))
+        self.options_label.pack(pady=(5, 5))
         
         # Brush size (for brush and eraser)
         size_frame = tk.Frame(self, bg="#2b2b2b")
         size_frame.pack(fill=tk.X, padx=8, pady=5)
         
-        size_label = tk.Label(
+        self.size_label = tk.Label(
             size_frame,
-            text="Size:",
+            text=t('size_label'),
             bg="#2b2b2b",
             fg="#ffffff",
             font=("Arial", 8)
         )
-        size_label.pack(side=tk.LEFT)
+        self.size_label.pack(side=tk.LEFT)
         
         self.size_var = tk.IntVar(value=3)
         self.size_scale = tk.Scale(
@@ -104,7 +106,7 @@ class Toolbar(tk.Frame):
         self.filled_var = tk.BooleanVar(value=False)
         self.filled_check = tk.Checkbutton(
             self,
-            text="Filled",
+            text=t('filled_label'),
             variable=self.filled_var,
             bg="#2b2b2b",
             fg="#ffffff",
@@ -114,6 +116,18 @@ class Toolbar(tk.Frame):
             command=self._on_filled_change
         )
         self.filled_check.pack(padx=8, pady=2)
+
+    def refresh_texts(self):
+        """Update texts for current language"""
+        from src.i18n import t
+        self.title_label.config(text=t('tools_label'))
+        self.options_label.config(text=t('options_label'))
+        self.size_label.config(text=t('size_label'))
+        self.filled_check.config(text=t('filled_label'))
+        
+        for name, icon, _ in self.tools:
+            if name in self.buttons:
+                self.buttons[name].config(text=f"{icon}\n{t(name.lower())}")
     
     def _select_tool(self, name):
         """Select a tool"""
