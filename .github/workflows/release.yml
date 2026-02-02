@@ -100,19 +100,28 @@ jobs:
       - name: Prepare Release Files
         run: |
           mkdir -p release_assets
-          find bin -type f -exec cp {} release_assets/ \;
+          # artifacts v4 saves files in subdirectories, find and flatten them
+          find bin -type f -name "pixelab-*" -exec cp {} release_assets/ \;
           ls -R release_assets/
 
-      - name: Release Latest
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: PixeLab Nightly Build
+          tag_name: v2.1.${{ github.run_number }}
+          name: PixeLab v2.1 Build ${{ github.run_number }}
           body: |
-            Automatic build from commit ${{ github.sha }} 🚀
-            Built on ${{ github.event.head_commit.timestamp }}
+            ## 🎨 PixeLab 자동 빌드 (Nightly)
+            - Commit: ${{ github.sha }}
+            - Timestamp: ${{ github.event.head_commit.timestamp }}
+            
+            3대 OS(Linux, Windows, macOS)용 실행 파일이 아래에 첨부되어 있습니다.
           draft: false
-          prerelease: true
-          files: release_assets/*
+          prerelease: false
+          make_latest: true
+          generate_release_notes: true
+          files: |
+            release_assets/pixelab-linux
+            release_assets/pixelab-windows.exe
+            release_assets/pixelab-macos
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
