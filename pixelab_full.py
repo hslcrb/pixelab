@@ -101,7 +101,7 @@ class PixelLabFullApp:
         
         # Layer panel (Bottom half of right panel)
         from src.ui.layerpanel import LayerPanel
-        self.layer_panel = LayerPanel(right_container, self.canvas_widget.object_manager, self.canvas_widget.render)
+        self.layer_panel = LayerPanel(right_container, self.canvas_widget.object_manager, self.canvas_widget.force_render)
         self.layer_panel.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
         # Status bar
@@ -194,10 +194,7 @@ class PixelLabFullApp:
     
     def _bind_events(self):
         """Bind keyboard and mouse events"""
-        # Mouse
-        self.canvas_widget.canvas.bind("<ButtonPress-1>", self._on_mouse_press)
-        self.canvas_widget.canvas.bind("<B1-Motion>", self._on_mouse_drag)
-        self.canvas_widget.canvas.bind("<ButtonRelease-1>", self._on_mouse_release)
+        # Mouse (Right click and Panning)
         self.canvas_widget.canvas.bind("<ButtonPress-3>", self._on_right_click)
         
         # Keyboard
@@ -212,7 +209,7 @@ class PixelLabFullApp:
         self.root.bind("<Delete>", lambda e: self.delete_selected())
         
         # Tool shortcuts
-        self.root.bind("v", lambda e: self.select_tool("Mouse"))
+        self.root.bind("v", lambda e: self.select_tool("Select"))
         self.root.bind("m", lambda e: self.select_tool("Select"))
         self.root.bind("p", lambda e: self.select_tool("Pencil"))
         self.root.bind("b", lambda e: self.select_tool("Brush"))
@@ -238,34 +235,42 @@ class PixelLabFullApp:
     
     def select_tool(self, name):
         """Select tool"""
-        if name in self.tools:
-            self.current_tool = self.tools[name]
-            self.current_tool.set_color(self.current_color)
-            # Don't call toolbar - it causes infinite recursion
-            self._update_status(f"{t('tool')}: {t(name.lower())}")
+        self.canvas_widget.set_tool(name)
+        if self.canvas_widget.current_tool:
+            self.canvas_widget.current_tool.set_color(self.current_color)
+            if hasattr(self.canvas_widget.current_tool, 'set_size'):
+                self.canvas_widget.current_tool.set_size(self.toolbar.size_var.get())
+            if hasattr(self.canvas_widget.current_tool, 'filled'):
+                self.canvas_widget.current_tool.filled = self.toolbar.filled_var.get()
+            if name == "Eyedropper":
+                self.canvas_widget.current_tool.color_callback = self._on_eyedropper_pick
+                
+        self.canvas_widget.force_render()
+        self._update_title() # Might be modified
+        self._update_status(f"{t('tool')}: {t(name.lower())}")
     
     def set_tool_size(self, size):
         """Set brush/eraser size"""
-        if hasattr(self.current_tool, 'set_size'):
-            self.current_tool.set_size(size)
+        if hasattr(self.canvas_widget.current_tool, 'set_size'):
+            self.canvas_widget.current_tool.set_size(size)
     
     def set_tool_filled(self, filled):
         """Set shape filled option"""
-        if hasattr(self.current_tool, 'filled'):
-            self.current_tool.filled = filled
+        if hasattr(self.canvas_widget.current_tool, 'filled'):
+            self.canvas_widget.current_tool.filled = filled
     
     def _on_color_change(self, color):
         """Handle color change"""
         self.current_color = color
-        self.current_tool.set_color(color)
+        if self.canvas_widget.current_tool:
+            self.canvas_widget.current_tool.set_color(color)
         
         # PROACTIVE: If we have selected objects, change their color too!
         # This addresses "Can I never change pixel color once set?"
         sel_count = len(self.canvas_widget.object_manager.selected_objects)
         if sel_count > 0:
             count = self.canvas_widget.object_manager.change_selected_color(color)
-            self.canvas_widget.need_render = True
-            self.canvas_widget.render()
+            self.canvas_widget.force_render()
             if count > 0:
                 self._update_status(f"{count} {t('objects')} {t('selected')} -> {t('color')} {t('changed')}")
     
@@ -610,9 +615,11 @@ class PixelLabFullApp:
         group = self.canvas_widget.object_manager.group_selected()
         if group:
             print(f"[DEBUG] Created group with {len(group.objects)} objects")
-            self.canvas_widget.need_render = True
             self.canvas_widget.render()
+            self.modified = True
             self._update_status(f"{t('grouped')}: {len(group.objects)} {t('objects')}")
+            self.layer_panel.refresh_list()
+            self.canvas_widget.force_render()
         else:
             print("[DEBUG] Failed to create group (need 2+ objects)")
             messagebox.showinfo(t('group'), "Select 2+ objects to group")
@@ -623,9 +630,11 @@ class PixelLabFullApp:
         count = self.canvas_widget.object_manager.ungroup_selected()
         print(f"[DEBUG] Ungrouped {count} objects")
         if count > 0:
-            self.canvas_widget.need_render = True
             self.canvas_widget.render()
+            self.modified = True
             self._update_status(f"{t('ungrouped')}: {count} {t('objects')}")
+            self.layer_panel.refresh_list()
+            self.canvas_widget.force_render()
         else:
             print("[DEBUG] No groups to ungroup")
     

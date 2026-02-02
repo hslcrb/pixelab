@@ -7,10 +7,10 @@ from tkinter import messagebox, simpledialog
 class LayerPanel(tk.Frame):
     """Component to manage layers"""
     
-    def __init__(self, parent, object_manager, on_change_callback):
+    def __init__(self, parent, object_manager, refresh_callback):
         super().__init__(parent, bg="#2b2b2b", width=200)
         self.object_manager = object_manager
-        self.on_change_callback = on_change_callback
+        self.refresh_callback = refresh_callback
         self.pack_propagate(False)
         
         from src.i18n import t
@@ -88,28 +88,29 @@ class LayerPanel(tk.Frame):
     def _add_layer(self):
         self.object_manager.add_layer()
         self.refresh_list()
-        self.on_change_callback()
+        self.refresh_callback()
 
     def _remove_layer(self):
         if self.object_manager.remove_layer(self.object_manager.current_layer_index):
             self.refresh_list()
-            self.on_change_callback()
+            self.refresh_callback()
         else:
             messagebox.showwarning("Warning", "Cannot remove last layer")
 
     def _select_layer(self, index):
         self.object_manager.current_layer_index = index
         self.refresh_list()
-        self.on_change_callback()
+        self.refresh_callback()
 
     def _toggle_visibility(self, index):
         self.object_manager.layers[index].visible = not self.object_manager.layers[index].visible
         self.refresh_list()
-        self.on_change_callback()
+        self.refresh_callback()
 
     def _toggle_lock(self, index):
         self.object_manager.layers[index].locked = not self.object_manager.layers[index].locked
         self.refresh_list()
+        self.refresh_callback()
 
     def _rename_layer(self, index):
         current_name = self.object_manager.layers[index].name
@@ -117,6 +118,7 @@ class LayerPanel(tk.Frame):
         if new_name:
             self.object_manager.layers[index].name = new_name
             self.refresh_list()
+            self.refresh_callback()
 
     def _move_layer_up(self):
         idx = self.object_manager.current_layer_index
@@ -125,7 +127,7 @@ class LayerPanel(tk.Frame):
                 self.object_manager.layers[idx+1], self.object_manager.layers[idx]
             self.object_manager.current_layer_index = idx + 1
             self.refresh_list()
-            self.on_change_callback()
+            self.refresh_callback()
 
     def _move_layer_down(self):
         idx = self.object_manager.current_layer_index
@@ -134,4 +136,4 @@ class LayerPanel(tk.Frame):
                 self.object_manager.layers[idx-1], self.object_manager.layers[idx]
             self.object_manager.current_layer_index = idx - 1
             self.refresh_list()
-            self.on_change_callback()
+            self.refresh_callback()

@@ -53,6 +53,10 @@ class VectorCanvas:
         # Preview object from current tool
         self.preview_object = None
         
+        # Current tool
+        self.current_tool = None
+        self.current_tool_name = "Pencil"
+        
         # Bind events
         self._bind_events()
         
@@ -65,6 +69,102 @@ class VectorCanvas:
         self.canvas.bind("<MouseWheel>", self._on_mousewheel)
         self.canvas.bind("<Button-4>", self._on_mousewheel)  # Linux
         self.canvas.bind("<Button-5>", self._on_mousewheel)  # Linux
+        
+        # Tool events
+        self.canvas.bind("<Button-1>", self._on_press)
+        self.canvas.bind("<B1-Motion>", self._on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        
+        # Panning (Middle click or Space+Left click handled via set_pan_mode)
+        self.canvas.bind("<Button-2>", lambda e: self.set_pan_mode(True, e))
+        self.canvas.bind("<ButtonRelease-2>", lambda e: self.set_pan_mode(False, e))
+
+    def _on_press(self, event):
+        """Handle mouse press"""
+        if self.is_panning:
+            self.pan_start = (event.x, event.y)
+            return
+            
+        px, py = self.screen_to_canvas(event.x, event.y)
+        if self.current_tool_name == "Eyedropper":
+            color = self.get_pixel(px, py)
+            if color and self.current_tool:
+                self.current_tool.pick_color(color)
+            return
+
+        if self.current_tool:
+            self.current_tool.on_press(px, py, self.object_manager)
+            self.preview_object = self.current_tool.get_preview_object()
+            self.force_render()
+
+    def _on_drag(self, event):
+        """Handle mouse drag"""
+        if self.is_panning and self.pan_start:
+            dx = event.x - self.pan_start[0]
+            dy = event.y - self.pan_start[1]
+            self.pan(dx, dy)
+            self.pan_start = (event.x, event.y)
+            return
+            
+        px, py = self.screen_to_canvas(event.x, event.y)
+        if self.current_tool:
+            self.current_tool.on_drag(px, py, self.object_manager)
+            self.preview_object = self.current_tool.get_preview_object()
+            self.force_render()
+
+    def _on_release(self, event):
+        """Handle mouse release"""
+        if self.is_panning:
+            return
+            
+        px, py = self.screen_to_canvas(event.x, event.y)
+        if self.current_tool:
+            self.current_tool.on_release(px, py, self.object_manager)
+            self.preview_object = None
+            self.force_render()
+            
+            if self.on_change:
+                self.on_change()
+    
+    def set_tool(self, tool_name):
+        """Set active tool"""
+        from .vector_tools import (
+            VectorPencilTool, VectorBrushTool, VectorEraserTool,
+            VectorLineTool, VectorRectangleTool, VectorCircleTool,
+            VectorEyedropperTool, VectorSelectTool, VectorFillTool
+        )
+        
+        self.current_tool_name = tool_name
+        
+        # Create tool instance
+        color = (0, 0, 0, 1) # dummy, will be set by app
+        if tool_name == "Select":
+            self.current_tool = VectorSelectTool()
+        elif tool_name == "Pencil":
+            self.current_tool = VectorPencilTool()
+        elif tool_name == "Line":
+            self.current_tool = VectorLineTool()
+        elif tool_name == "Rectangle":
+            self.current_tool = VectorRectangleTool()
+        elif tool_name == "Circle":
+            self.current_tool = VectorCircleTool()
+        elif tool_name == "Eraser":
+            self.current_tool = VectorEraserTool()
+        elif tool_name == "Brush":
+            self.current_tool = VectorBrushTool()
+        elif tool_name == "Fill":
+            self.current_tool = VectorFillTool()
+        elif tool_name == "Eyedropper":
+            # Callback will be set by the caller (app)
+            self.current_tool = VectorEyedropperTool()
+        # Other tools as needed
+        
+        self.canvas.config(cursor=self.current_tool.get_cursor() if self.current_tool else "crosshair")
+
+    def force_render(self):
+        """Force a render regardless of need_render flag"""
+        self.need_render = True
+        self.render()
     
     def _on_resize(self, event):
         """Handle canvas resize"""
@@ -107,7 +207,8 @@ class VectorCanvas:
         else:
             self.is_panning = False
             self.pan_start = None
-            self.canvas.config(cursor="crosshair")
+            cursor = self.current_tool.get_cursor() if self.current_tool else "crosshair"
+            self.canvas.config(cursor=cursor)
     
     def pan(self, dx, dy):
         """Pan the canvas"""
