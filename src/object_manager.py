@@ -250,6 +250,79 @@ class ObjectManager:
             self.add_log(f"Changed color of {count} objects")
         return count
     
+    def move_selected_up(self):
+        """Move selected objects one step forward in their layers"""
+        modified = False
+        for layer in self.layers:
+            if layer.locked: continue
+            
+            # Find indices of selected objects in this layer
+            indices = [i for i, obj in enumerate(layer.objects) if obj in self.selected_objects]
+            # Process from top to bottom to avoid index shifting issues
+            for i in reversed(indices):
+                if i < len(layer.objects) - 1:
+                    layer.objects[i], layer.objects[i+1] = layer.objects[i+1], layer.objects[i]
+                    modified = True
+        
+        if modified:
+            self.add_log("Moved objects forward")
+        return modified
+
+    def move_selected_down(self):
+        """Move selected objects one step backward in their layers"""
+        modified = False
+        for layer in self.layers:
+            if layer.locked: continue
+            
+            indices = [i for i, obj in enumerate(layer.objects) if obj in self.selected_objects]
+            # Process from bottom to top
+            for i in indices:
+                if i > 0:
+                    layer.objects[i], layer.objects[i-1] = layer.objects[i-1], layer.objects[i]
+                    modified = True
+        
+        if modified:
+            self.add_log("Moved objects backward")
+        return modified
+
+    def move_selected_to_front(self):
+        """Move selected objects to the very front of their layers"""
+        modified = False
+        for layer in self.layers:
+            if layer.locked: continue
+            
+            selected_in_layer = [obj for obj in layer.objects if obj in self.selected_objects]
+            if not selected_in_layer: continue
+            
+            # Remove and re-append at the end
+            for obj in selected_in_layer:
+                layer.objects.remove(obj)
+            layer.objects.extend(selected_in_layer)
+            modified = True
+            
+        if modified:
+            self.add_log("Moved objects to front")
+        return modified
+
+    def move_selected_to_back(self):
+        """Move selected objects to the very back of their layers"""
+        modified = False
+        for layer in self.layers:
+            if layer.locked: continue
+            
+            selected_in_layer = [obj for obj in layer.objects if obj in self.selected_objects]
+            if not selected_in_layer: continue
+            
+            # Remove and re-insert at the beginning
+            for obj in reversed(selected_in_layer):
+                layer.objects.remove(obj)
+                layer.objects.insert(0, obj)
+            modified = True
+            
+        if modified:
+            self.add_log("Moved objects to back")
+        return modified
+
     def rasterize(self, width, height):
         """
         Rasterize all visible layers to pixel data

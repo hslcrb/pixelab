@@ -209,6 +209,11 @@ class PixelLabFullApp:
         self.root.bind("<Control-u>", lambda e: self.ungroup_objects())
         self.root.bind("<Delete>", lambda e: self.delete_selected())
         
+        self.root.bind("<Control-bracketright>", lambda e: self.reorder_up())
+        self.root.bind("<Control-bracketleft>", lambda e: self.reorder_down())
+        self.root.bind("<Control-Shift-bracketright>", lambda e: self.reorder_top())
+        self.root.bind("<Control-Shift-bracketleft>", lambda e: self.reorder_bottom())
+        
         # Tool shortcuts
         self.root.bind("v", lambda e: self.select_tool("Select"))
         self.root.bind("m", lambda e: self.select_tool("Select"))
@@ -385,7 +390,15 @@ class PixelLabFullApp:
         )
         
         self.context_menu.add_separator()
+
+        # Reordering
+        self.context_menu.add_command(label=t('bring_forward'), command=self.reorder_up, accelerator="Ctrl+]")
+        self.context_menu.add_command(label=t('send_backward'), command=self.reorder_down, accelerator="Ctrl+[")
+        self.context_menu.add_command(label=t('bring_to_front'), command=self.reorder_top, accelerator="Ctrl+Shift+]")
+        self.context_menu.add_command(label=t('send_to_back'), command=self.reorder_bottom, accelerator="Ctrl+Shift+[")
         
+        self.context_menu.add_separator()
+
         # Group/Ungroup
         if sel_count >= 2:
             self.context_menu.add_command(label=t('group'), command=self.group_objects)
@@ -693,6 +706,30 @@ class PixelLabFullApp:
         else:
             print("[DEBUG] No groups to ungroup")
     
+    def reorder_up(self):
+        """Bring forward"""
+        if self.canvas_widget.object_manager.move_selected_up():
+            self.canvas_widget.force_render()
+            self.modified = True
+            
+    def reorder_down(self):
+        """Send backward"""
+        if self.canvas_widget.object_manager.move_selected_down():
+            self.canvas_widget.force_render()
+            self.modified = True
+
+    def reorder_top(self):
+        """Bring to front"""
+        if self.canvas_widget.object_manager.move_selected_to_front():
+            self.canvas_widget.force_render()
+            self.modified = True
+
+    def reorder_bottom(self):
+        """Send to back"""
+        if self.canvas_widget.object_manager.move_selected_to_back():
+            self.canvas_widget.force_render()
+            self.modified = True
+
     def delete_selected(self):
         """Delete selected objects"""
         self.canvas_widget.object_manager.delete_selected()
